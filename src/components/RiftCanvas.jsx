@@ -31,15 +31,21 @@ export default function RiftCanvas() {
     const N_TEAR = 52;
     const TEAR_Y0 = 0.04;
     const TEAR_Y1 = 0.96;
-    const tearNoise = Array.from(
-      { length: N_TEAR + 1 },
-      (_, i) =>
+
+    // Sharp, jagged noise for shattered glass effect
+    const tearNoise = Array.from({ length: N_TEAR + 1 }, (_, i) => {
+      // Use multiple aggressive noise functions for sharp, angular edges
+      const base =
         Math.sin(i * 2.71828 + 0.3) * 30 +
         Math.sin(i * 5.31415 + 0.9) * 18 +
-        Math.sin(i * 0.91 + 2.2) * 12,
-    );
+        Math.sin(i * 0.91 + 2.2) * 12;
+      // Add high-frequency noise for sharper peaks
+      const sharp =
+        Math.sin(i * 13.7 + 1.1) * 20 + Math.sin(i * 7.3 + 0.5) * 15;
+      return base + sharp;
+    });
 
-    function getTearPts(halfOpen) {
+    function getTearPts(halfOpen, strain = 0) {
       // Calculate the longest possible dimension (the diagonal) for full coverage when rotated
       const maxSpan = Math.hypot(W, H) * 1.2; // 1.2 adds buffer
 
@@ -47,10 +53,17 @@ export default function RiftCanvas() {
         // Map Y coordinates across the diagonal instead of just H
         const y = lerp(cy - maxSpan / 2, cy + maxSpan / 2, i / N_TEAR);
         const noise = tearNoise[i];
+
+        // Add high-frequency vibration during strain (creates struggling effect)
+        const strainVibration =
+          strain *
+          (Math.sin(i * 3.7 + performance.now() * 0.01) * 25 +
+            Math.sin(i * 5.1) * 15);
+
         return {
           y,
-          lx: cx + noise - halfOpen * 0.8,
-          rx: cx + noise + halfOpen * 0.7,
+          lx: cx + noise - halfOpen * 0.8 + strainVibration,
+          rx: cx + noise + halfOpen * 0.7 + strainVibration,
         };
       });
     }
@@ -153,6 +166,55 @@ export default function RiftCanvas() {
       vg.addColorStop(1, `rgba(10,1,28,${safe(glow * 0.6)})`);
       ctx.fillStyle = vg;
       ctx.fill();
+      ctx.restore();
+    }
+
+    function drawShards(pts, halfOpen, glow, t) {
+      if (halfOpen <= 1) return;
+
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter"; // Additive blending for glowing effect
+
+      // Draw shards radiating outward from the edges
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        const pNext = pts[(i + 1) % pts.length];
+
+        // Randomly generate shards along edges (every few points, with variation)
+        if (Math.sin(i * 3.7 + t * 2) > 0.4) {
+          const shardLength = 40 + Math.sin(i * 2.3 + t) * 20;
+          const shardWidth = 8 + Math.sin(i * 1.1) * 4;
+
+          // Left edge shard
+          const lAngle = Math.atan2(p.y - cy, p.lx - cx) - Math.PI / 2;
+          ctx.save();
+          ctx.translate(p.lx, p.y);
+          ctx.rotate(lAngle);
+          ctx.fillStyle = `rgba(120,40,200,${safe(glow * 0.5)})`;
+          ctx.fillRect(
+            -shardWidth / 2,
+            -shardLength / 2,
+            shardWidth,
+            shardLength,
+          );
+          ctx.restore();
+
+          // Right edge shard
+          const rAngle = Math.atan2(p.y - cy, p.rx - cx) + Math.PI / 2;
+          ctx.save();
+          ctx.translate(p.rx, p.y);
+          ctx.rotate(rAngle);
+          ctx.fillStyle = `rgba(100,20,180,${safe(glow * 0.4)})`;
+          ctx.fillRect(
+            -shardWidth / 2,
+            -shardLength / 2,
+            shardWidth,
+            shardLength,
+          );
+          ctx.restore();
+        }
+      }
+
       ctx.restore();
     }
 
@@ -281,9 +343,15 @@ export default function RiftCanvas() {
       const partP = eOut(ph(t, 4.0, 8.5));
       const fadeP = eIn(ph(t, 15.0, 17.0));
 
+      // Calculate strain intensity (when claw is gripping/struggling with the rift)
+      // Peaks during the impact and opening phase
+      const strainIntensity = eOut(
+        ph(dragonTime, CLAW_IMPACT, CLAW_IMPACT + 0.8),
+      );
+
       const halfOpen = (crackP * 0.04 + eOut(riftP) * 0.96) * maxHalfOpen;
       const glow = safe(halfOpen / (maxHalfOpen * 0.4));
-      const pts = getTearPts(halfOpen);
+      const pts = getTearPts(halfOpen, strainIntensity);
 
       // Draw the background normally (unrotated)
       drawBg(glow, t);
@@ -304,6 +372,7 @@ export default function RiftCanvas() {
       drawParticles(partP * glow, t);
       drawVoid(pts, halfOpen, glow, t);
       drawRiftEdges(pts, halfOpen, glow);
+      drawShards(pts, halfOpen, glow, t); // Crystal shards radiating from edges
       drawLightning(lightP, t);
 
       ctx.restore();
