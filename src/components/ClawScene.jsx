@@ -89,6 +89,15 @@ export default function ClawScene() {
         mixerRef.current.update(delta);
       }
 
+      // Apply global shake offset to camera
+      if (window.shakeOffset) {
+        camera.position.x = 0 + window.shakeOffset.x;
+        camera.position.y = 0 + window.shakeOffset.y;
+      } else {
+        camera.position.x = 0;
+        camera.position.y = 0;
+      }
+
       renderer.render(scene, camera);
     }
     animate();

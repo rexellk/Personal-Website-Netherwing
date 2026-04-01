@@ -79,37 +79,45 @@ export default function DragonScene() {
           ease: "power1.out",
         });
 
+      // Shift rift timing to align with dragon impact
+      // Rift crack should start at ~0.8s (when dragon impact occurs)
+      // Rift opening should align with the claw strike
+      window.riftTimeOffset = 0.8 - 1.2; // Shift to start crack at impact moment
+
       // 4. Camera Shake (Sync'd to the 0.8s mark)
-      // 1. Ensure you have the EasePack if using specific rough eases,
-      // but standard GSAP "steps" or "none" works well for manual decay.
+      // Expose shake globally for all scenes
+      window.shakeOffset = { x: 0, y: 0 };
 
       tl.to(
         camera.position,
         {
-          duration: 0.8, // Much longer duration for the "settle"
-
-          // Use a function or a rough ease to create the jitter
-          x: "+=0.0", // We animate the "shake" via a custom ease
+          duration: 2.5,
+          x: "+=0.0",
           y: "+=0.0",
-
           modifiers: {
-            // This math function creates the "Decay" effect
             x: (_) => {
-              const time = tl.progress(); // Get progress (0 to 1)
-              const decay = 1 - time; // Decay goes from 1 down to 0
-              return 0 + (Math.random() - 0.5) * 0.5 * decay;
+              const time = tl.progress();
+              const decay = 1 - time;
+              const shakeX = (Math.random() - 0.5) * 0.5 * decay;
+              window.shakeOffset.x = shakeX; // Store for other scenes
+              return 0 + shakeX;
             },
             y: (_) => {
               const time = tl.progress();
               const decay = 1 - time;
-              return 0 + (Math.random() - 0.5) * 0.5 * decay;
+              const shakeY = (Math.random() - 0.5) * 0.5 * decay;
+              window.shakeOffset.y = shakeY; // Store for other scenes
+              return 0 + shakeY;
             },
           },
-          ease: "power2.out", // The "settle" feels natural
-          onComplete: () => camera.position.set(0, 0, 5),
+          ease: "power2.out",
+          onComplete: () => {
+            camera.position.set(0, 0, 5);
+            window.shakeOffset = { x: 0, y: 0 };
+          },
         },
         2.0,
-      ); // Starts at 2.0s
+      );
 
       mixerRef.current = mixer;
     });
