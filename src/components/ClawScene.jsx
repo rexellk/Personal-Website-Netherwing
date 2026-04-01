@@ -65,30 +65,10 @@ export default function ClawScene() {
       riftAction.setLoop(THREE.LoopOnce);
       riftAction.clampWhenFinished = true;
 
-      // 1. Anticipation
-      riftAction.timeScale = 0.15;
       riftAction.play();
-
-      const tl = gsap.timeline();
-
-      // 2. The "Impact" (Now Normal Speed)
-      tl.to(riftAction, {
-        timeScale: 1.0,
-        duration: 0.5,
-        delay: 0.8,
-        ease: "power2.inOut",
-      })
-        // 3. The Settle
-        .to(riftAction, {
-          timeScale: 0.1,
-          duration: 1.5,
-          ease: "power1.out",
-        });
 
       mixerRef.current = mixer;
       actionRef.current = riftAction;
-      // Expose for DragonScene sync (though ClawScene will sync to DragonScene instead)
-      window.primaryDragonAction = riftAction;
     });
 
     const timer = new Timer();
@@ -100,8 +80,9 @@ export default function ClawScene() {
       const delta = timer.getDelta();
 
       if (mixerRef.current && actionRef.current && window.primaryDragonAction) {
-        // Sync to DragonScene's animation time
+        // Sync both time AND timeScale from DragonScene
         actionRef.current.time = window.primaryDragonAction.time;
+        actionRef.current.timeScale = window.primaryDragonAction.timeScale;
         // Update mixer with 0 delta to instantly apply that frame
         mixerRef.current.update(0);
       } else if (mixerRef.current) {
