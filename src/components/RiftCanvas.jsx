@@ -248,10 +248,15 @@ export default function RiftCanvas() {
         frameId = requestAnimationFrame(render);
         return;
       }
+
+      // 1. AMBIENT TIME (for stars, lightning, particles to keep moving)
       const t = ((ts - t0) / 1000) % CYCLE;
 
-      // Apply time offset from dragon scene to sync rift opening with claw impact
-      const offsetT = t + (window.riftTimeOffset || 0);
+      // 2. STRUCTURAL TIME (Sync strictly to the 3D animation!)
+      let dragonTime = 0;
+      if (window.primaryDragonAction) {
+        dragonTime = window.primaryDragonAction.time;
+      }
 
       ctx.clearRect(0, 0, W, H);
 
@@ -259,45 +264,50 @@ export default function RiftCanvas() {
       const shakeX = window.shakeOffset?.x || 0;
       const shakeY = window.shakeOffset?.y || 0;
       ctx.save();
-      ctx.translate(shakeX * W * 0.01, shakeY * H * 0.01); // Scale shake to canvas size
+      ctx.translate(shakeX * W * 0.01, shakeY * H * 0.01);
 
       const maxHalfOpen = Math.max(1, Math.min(W * 0.4, 400));
-      const crackP = eIO(ph(offsetT, 1.2, 2.4));
-      const riftP = eIO(ph(offsetT, 2.2, 5.8));
-      const lightP = ph(t, 6.0, 8.0);
+
+      // --- EXACT SYNC TIMESTAMPS ---
+      // Tweak these two numbers to match the exact seconds of your .glb animation
+      const CLAW_IMPACT = 1.2; // Second when the claw first pierces the screen
+      const CLAW_FINISH = 2.8; // Second when the claw is fully extended
+
+      // We calculate the opening based on dragonTime, NOT the looping 't'
+      const crackP = eIO(ph(dragonTime, CLAW_IMPACT, CLAW_IMPACT + 0.4));
+      const riftP = eIO(ph(dragonTime, CLAW_IMPACT + 0.2, CLAW_FINISH));
+
+      const lightP = ph(t, 6.0, 8.0); // Keep ambient effects on standard 't'
       const partP = eOut(ph(t, 4.0, 8.5));
       const fadeP = eIn(ph(t, 15.0, 17.0));
 
       const halfOpen = (crackP * 0.04 + eOut(riftP) * 0.96) * maxHalfOpen;
       const glow = safe(halfOpen / (maxHalfOpen * 0.4));
-      const openProgress = safe(halfOpen / maxHalfOpen);
       const pts = getTearPts(halfOpen);
 
       // Draw the background normally (unrotated)
-      drawBg(glow, offsetT);
+      drawBg(glow, t);
 
-      // --- CANVAS ROTATION LOGIC ---
+      // --- CANVAS ROTATION LOGIC (ALIGN WITH THE CLAW) ---
       // Rotate from 40° down to 10° as the rift opens
       const baseAngle = lerp(40, 10, riftP); // 40° → 10° based on opening progress
       const curveAngle = Math.sin(riftP * Math.PI) * 3; // Subtle S-curve (±3° oscillation)
       const angleInDegrees = baseAngle + curveAngle;
       const angleInRadians = angleInDegrees * (Math.PI / 180);
 
-      ctx.save(); // Save the standard, unrotated state
-      ctx.translate(cx, cy); // Move the pivot point to the center of the screen
-      ctx.rotate(angleInRadians); // Rotate the canvas
-      ctx.translate(-cx, -cy); // Move the pivot point back
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angleInRadians);
+      ctx.translate(-cx, -cy);
 
-      // Draw everything else on the rotated canvas
-      drawParticles(partP * glow, offsetT);
-      drawVoid(pts, halfOpen, glow, offsetT);
+      // Draw everything else on the rotated canvas using 't' for ambient wiggle
+      drawParticles(partP * glow, t);
+      drawVoid(pts, halfOpen, glow, t);
       drawRiftEdges(pts, halfOpen, glow);
-      drawLightning(lightP, offsetT);
+      drawLightning(lightP, t);
 
-      ctx.restore(); // Restore back to the unrotated state
-      // --------------------------
-
-      ctx.restore(); // Restore from shake translation
+      ctx.restore();
+      ctx.restore();
 
       if (fadeP > 0) {
         ctx.fillStyle = `rgba(0,0,0,${fadeP})`;
