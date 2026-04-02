@@ -30,6 +30,13 @@ const BotanicRight = () => (
 
 export default function Hero({ riftTriggered, modelReady }) {
   const [visible, setVisible] = React.useState(true);
+  const [audioActivated, setAudioActivated] = React.useState(false);
+
+  React.useEffect(() => {
+    const onPointer = () => setAudioActivated(true);
+    window.addEventListener('pointerdown', onPointer, { once: true });
+    return () => window.removeEventListener('pointerdown', onPointer);
+  }, []);
 
   React.useEffect(() => {
     if (riftTriggered) setVisible(false);
@@ -87,6 +94,12 @@ export default function Hero({ riftTriggered, modelReady }) {
       <div className="pv-cta-row">
         <a href="https://drive.google.com/file/d/10dNoRvINeiCV5MuUxld_YrD9HZ1axYkH/view?usp=sharing" className="pv-btn-primary" target="_blank" rel="noreferrer">View Resume</a>
         <a href="mailto:rexellk@umich.edu" className="pv-btn-ghost">Get In Touch</a>
+      </div>
+
+      <div style={{ position: "absolute", bottom: 72, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, opacity: 0, animation: "pv-fadeIn 1s ease 2.2s forwards" }}>
+        <span style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: audioActivated ? "rgba(72,202,228,0.6)" : "rgba(199,125,255,0.35)", transition: "color 0.4s ease" }}>
+          {audioActivated ? "Audio Activated" : "Click anywhere for audio"}
+        </span>
       </div>
 
       <div className="pv-scroll-hint">

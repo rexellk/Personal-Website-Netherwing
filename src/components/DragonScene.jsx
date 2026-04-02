@@ -341,14 +341,14 @@ export default function DragonScene() {
           modifiers: {
             x: (_) => {
               const time = tl.progress();
-              const decay = Math.pow(1 - time, 0.6); // slower decay
+              const decay = Math.pow(1 - time, 2.0); // slower decay
               const shakeX = (Math.random() - 0.5) * 0.6 * decay;
               window.shakeOffset.x = shakeX;
               return 0 + shakeX;
             },
             y: (_) => {
               const time = tl.progress();
-              const decay = Math.pow(1 - time, 0.6);
+              const decay = Math.pow(1 - time, 1.5);
               const shakeY = (Math.random() - 0.5) * 0.6 * decay;
               window.shakeOffset.y = shakeY;
               return 0 + shakeY;

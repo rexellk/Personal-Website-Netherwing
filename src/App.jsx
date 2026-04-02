@@ -15,25 +15,19 @@ export default function App() {
   const [modelReady, setModelReady] = useState(false)
   const triggered = useRef(false)
 
-  // Use Web Audio API — stays unlocked after any pointer gesture
+  // Create AudioContext + fetch buffer immediately on mount
+  // resume() inside the wheel handler — wheel is a trusted gesture
   const audioCtxRef = useRef(null)
   const audioBufferRef = useRef(null)
 
   useEffect(() => {
-    const unlock = async () => {
-      window.removeEventListener('pointerdown', unlock)
-      const ctx = new AudioContext()
-      audioCtxRef.current = ctx
-      try {
-        const res = await fetch('/Netherwing-Intro.mp3')
-        const arr = await res.arrayBuffer()
-        audioBufferRef.current = await ctx.decodeAudioData(arr)
-      } catch (err) {
-        console.error('audio load error:', err)
-      }
-    }
-    window.addEventListener('pointerdown', unlock)
-    return () => window.removeEventListener('pointerdown', unlock)
+    const ctx = new AudioContext()
+    audioCtxRef.current = ctx
+    fetch('/Netherwing-Intro.mp3')
+      .then(r => r.arrayBuffer())
+      .then(arr => ctx.decodeAudioData(arr))
+      .then(buf => { audioBufferRef.current = buf })
+      .catch(err => console.error('audio load error:', err))
   }, [])
 
   // Wait for DragonScene to finish loading the GLB before allowing scroll trigger
@@ -57,13 +51,23 @@ export default function App() {
       window.startDragonAnimation?.()
 
       if (audioCtxRef.current && audioBufferRef.current) {
-        const src = audioCtxRef.current.createBufferSource()
-        src.buffer = audioBufferRef.current
-        src.connect(audioCtxRef.current.destination)
-        const AUDIO_DELAY_MS = 700  // ← change this to delay the sound start (milliseconds)
-        src.start(audioCtxRef.current.currentTime + AUDIO_DELAY_MS / 1000)
-      } else {
-        console.warn('audio not ready — pointerdown not received yet')
+        const ctx = audioCtxRef.current
+        const AUDIO_DELAY_MS = 700
+        const play = () => {
+          const src = ctx.createBufferSource()
+          src.buffer = audioBufferRef.current
+          const gain = ctx.createGain()
+          gain.gain.value = 0.3  // ← 0.0 = silent, 1.0 = full volume
+          src.connect(gain)
+          gain.connect(ctx.destination)
+          src.start(ctx.currentTime + AUDIO_DELAY_MS / 1000)
+        }
+        // resume() unlocks the context from within the wheel gesture
+        if (ctx.state === 'suspended') {
+          ctx.resume().then(play)
+        } else {
+          play()
+        }
       }
 
       setTimeout(() => {
