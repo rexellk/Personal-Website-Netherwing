@@ -1,3 +1,5 @@
+import React from "react";
+
 const BotanicLeft = () => (
   <svg
     style={{ position: "absolute", left: 32, bottom: 80, opacity: 0.18, pointerEvents: "none", transform: "rotate(-12deg)" }}
@@ -26,7 +28,19 @@ const BotanicRight = () => (
   </svg>
 );
 
-export default function Hero() {
+export default function Hero({ riftTriggered }) {
+  const [visible, setVisible] = React.useState(true);
+
+  React.useEffect(() => {
+    if (riftTriggered) setVisible(false);
+  }, [riftTriggered]);
+
+  React.useEffect(() => {
+    const onDone = () => setVisible(true);
+    window.addEventListener('riftFlashDone', onDone);
+    return () => window.removeEventListener('riftFlashDone', onDone);
+  }, []);
+
   return (
     <section
       id="hero"
@@ -39,6 +53,9 @@ export default function Hero() {
         position: "relative",
         zIndex: 10,
         overflow: "hidden",
+        opacity: visible ? 1 : 0,
+        transition: "opacity 0.4s ease",
+        pointerEvents: riftTriggered ? "none" : "auto",
       }}
     >
       <BotanicLeft />

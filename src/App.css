@@ -1,3 +1,9 @@
+@keyframes purpleFlash {
+  0%   { opacity: 0; }
+  4%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .counter {
   font-size: 16px;
   padding: 5px 10px;

@@ -158,10 +158,18 @@ function StatusTag() {
 }
 
 export default function Portfolio() {
+  const [riftTriggered, setRiftTriggered] = useState(false);
+
+  useEffect(() => {
+    const onTrigger = () => setRiftTriggered(true);
+    window.addEventListener('riftTrigger', onTrigger);
+    return () => window.removeEventListener('riftTrigger', onTrigger);
+  }, []);
+
   return (
     <div
       style={{
-        background: "var(--pv-void)",
+        background: "transparent",
         color: "var(--pv-silver)",
         fontFamily: "'Jost', sans-serif",
         fontWeight: 300,
@@ -182,14 +190,19 @@ export default function Portfolio() {
       <StatusTag />
 
       <main>
-        <Hero />
-        <SectionDivider variant="purple" />
-        <About />
-        <SectionDivider variant="pink" />
-        <Experience />
-        <SectionDivider variant="purple" />
-        <Projects />
-        <Contact />
+        {/* Hero is transparent — rift canvas shows through as its background */}
+        <Hero riftTriggered={riftTriggered} />
+
+        {/* Opaque cover so portfolio sections scroll over the rift cleanly */}
+        <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15 }}>
+          <SectionDivider variant="purple" />
+          <About />
+          <SectionDivider variant="pink" />
+          <Experience />
+          <SectionDivider variant="purple" />
+          <Projects />
+          <Contact />
+        </div>
       </main>
     </div>
   );

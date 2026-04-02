@@ -266,37 +266,33 @@ export default function DragonScene() {
       riftAction.setLoop(THREE.LoopOnce);
       riftAction.clampWhenFinished = true;
 
-      // 1. Anticipation (Keep this very slow to make 1.0 feel "fast" by comparison)
-      riftAction.timeScale = 0.15; // Dropped from 0.2 to 0.15
+      riftAction.timeScale = 0.15;
       riftAction.play();
+      riftAction.paused = true; // Start frozen — wait for scroll trigger
 
       // Expose for ClawScene sync
       window.primaryDragonAction = riftAction;
 
-      const tl = gsap.timeline();
+      // Hide dragon until animation starts
+      dragon.visible = false;
 
-      // 2. The "Impact" (Now Normal Speed)
+      const tl = gsap.timeline({ paused: true });
+
       tl.to(riftAction, {
-        timeScale: 1.0, // Normal speed
-        duration: 0.5, // Increased duration to let the animation play out
+        timeScale: 1.0,
+        duration: 0.5,
         delay: 0.8,
         ease: "power2.inOut",
       })
-        // 3. The Settle
         .to(riftAction, {
-          timeScale: 0.1, // Slow-mo finish
+          timeScale: 0.1,
           duration: 1.5,
           ease: "power1.out",
         });
 
-      // Shift rift timing to align with dragon impact
-      // Rift crack should start at ~0.8s (when dragon impact occurs)
-      // Rift opening should align with the claw strike
-      window.riftTimeOffset = 0.8 - 1.2; // Shift to start crack at impact moment
+      window.riftTimeOffset = 0.8 - 1.2;
 
-      // --- PHASE 3: THE EYES IN THE DARK (FLASH ANIMATION) ---
-      // Fire this right as the dragon becomes visible, around the 2.0s mark
-      const eyeFlashTl = gsap.timeline({ delay: 3.0 });
+      const eyeFlashTl = gsap.timeline({ paused: true, delay: 3.0 });
 
       eyeFlashTl
         // 1. THE IMPACT FLASH (Instantly blindingly bright!)
@@ -365,6 +361,26 @@ export default function DragonScene() {
       );
 
       mixerRef.current = mixer;
+
+      // Expose trigger — called by App.jsx on first scroll
+      window.startDragonAnimation = () => {
+        dragon.visible = true;
+        riftAction.paused = false;
+        tl.play();
+        eyeFlashTl.play();
+      };
+
+      // Called at flash peak to hide dragon behind the white-out
+      window.hideDragon = () => {
+        dragon.visible = false;
+        riftAction.paused = true;
+      };
+
+      // In case scroll fired before model finished loading
+      if (window.riftPendingStart) {
+        window.startDragonAnimation();
+        window.riftPendingStart = false;
+      }
     });
 
     // const clock = new THREE.Clock()

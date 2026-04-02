@@ -399,7 +399,7 @@ export default function RiftCanvas() {
         left: 0,
         width: "100vw",
         height: "100vh",
-        zIndex: 10, // ← in front, acting as fabric
+        zIndex: 9, // ← behind hero text (z:10), in front of dragon (z:1)
         pointerEvents: "none",
       }}
     />
