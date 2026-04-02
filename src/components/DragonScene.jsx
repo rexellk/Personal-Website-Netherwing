@@ -286,6 +286,13 @@ export default function DragonScene() {
           ease: "power1.out",
         });
 
+      // Drift dragon toward camera — looms out of the rift
+      tl.to(dragon.position, {
+        z: 2.0,
+        duration: 6.0,
+        ease: "power4.in",
+      }, 0);
+
       window.riftTimeOffset = 0.8 - 1.2;
 
       const eyeFlashTl = gsap.timeline({ paused: true, delay: 3.0 });
