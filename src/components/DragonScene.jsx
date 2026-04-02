@@ -129,6 +129,53 @@ export default function DragonScene() {
 
       let eyeLights = [leftEyeMesh, rightEyeMesh];
 
+      // ==========================================
+      // --- ANAMORPHIC FLARE SETUP (SMOOTH EDGES) ---
+      // ==========================================
+      const flareCanvas = document.createElement("canvas");
+      // 1. MAKE IT SQUARE: This guarantees the glow never hits the edge
+      flareCanvas.width = 256;
+      flareCanvas.height = 256;
+      const ctx = flareCanvas.getContext("2d");
+
+      // 2. PERFECT CIRCLE: Center at 128, radius of 128
+      const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+      gradient.addColorStop(0, "rgba(255, 255, 255, 1)");   // Solid white core
+      gradient.addColorStop(0.1, "rgba(128, 128, 128, 1)"); // Grey middle
+      gradient.addColorStop(1, "rgba(0, 0, 0, 1)");         // PURE BLACK (Invisible edge)
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 256, 256);
+
+      const flareTexture = new THREE.CanvasTexture(flareCanvas);
+
+      const flareMat = new THREE.SpriteMaterial({
+        map: flareTexture,
+        // Match this to whatever pure color you are using for your eyes!
+        color: new THREE.Color(0xcc33ff).multiplyScalar(5),
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        depthTest: false,
+      });
+
+      // 3. STRETCH THE SQUARE INTO A BEAM
+      const leftFlare = new THREE.Sprite(flareMat);
+      // Because the image is a square now, we increase X to stretch it out
+      leftFlare.scale.set(0.6, 0.05, 1); 
+      // Push it slightly toward the outer edge of the eye
+      leftFlare.position.x = 0.05; 
+
+      const rightFlare = new THREE.Sprite(flareMat);
+      rightFlare.scale.set(0.6, 0.05, 1);
+      // Push it slightly toward the outer edge of the eye
+      rightFlare.position.x = -0.05;
+
+      leftEyeMesh.add(leftFlare);
+      rightEyeMesh.add(rightFlare);
+      // ==========================================
+
       // Traverse to find the exact eye bones from the rig
       dragon.traverse((child) => {
         if (child.name === "Object_12") {
@@ -218,29 +265,32 @@ export default function DragonScene() {
       eyeFlashTl
         // 1. THE IMPACT FLASH (Instantly blindingly bright!)
         .to(glowElements, {
-          intensity: 100, // MASSIVE light overload
-          opacity: 1.0, // Solid glowing core
-          duration: 0.05, // Split second burst (0.05s)
-          ease: "expo.out", // Super sharp, immediate "stabbing" ease
+          intensity: 200,
+          opacity: 1.0,
+          duration: 0.05,
+          ease: "expo.out",
           onUpdate: () => {
-            // Apply GSAP interpolated values to actual lights/material
             leftLight.intensity = glowElements.intensity;
             rightLight.intensity = glowElements.intensity;
             eyeMat.opacity = glowElements.opacity;
           },
         })
-        // 2. THE SETTLE (Slowly glows down to menacing level)
+        // Spike flare at the same time as the flash
+        .to(flareMat, { opacity: 1.0, duration: 0.05, ease: "expo.out" }, "<")
+        // 2. THE ANAMORPHIC FLARE FADE (starts right after flash ends)
+        .to(flareMat, { opacity: 0, duration: 1.0, ease: "power2.out" }, ">")
+        // 3. THE SETTLE (starts at same time as flare fade)
         .to(glowElements, {
-          intensity: 3, // Back to sustainable light level
-          opacity: 0.7, // Settle into standard additive glow
-          duration: 2.5, // Long, slow settle
-          ease: "power2.out", // Smooth natural fade
+          intensity: 3,
+          opacity: 0.7,
+          duration: 2.5,
+          ease: "power2.out",
           onUpdate: () => {
             leftLight.intensity = glowElements.intensity;
             rightLight.intensity = glowElements.intensity;
             eyeMat.opacity = glowElements.opacity;
           },
-        });
+        }, "<");
       // --------------------------------------------------
 
       // 4. Camera Shake
