@@ -28,7 +28,7 @@ const BotanicRight = () => (
   </svg>
 );
 
-export default function Hero({ riftTriggered }) {
+export default function Hero({ riftTriggered, modelReady }) {
   const [visible, setVisible] = React.useState(true);
 
   React.useEffect(() => {
@@ -90,7 +90,10 @@ export default function Hero({ riftTriggered }) {
       </div>
 
       <div className="pv-scroll-hint">
-        <div className="pv-scroll-line" />
+        {modelReady
+          ? <div className="pv-scroll-line" />
+          : <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(199,125,255,0.4)", animation: "pv-fadeIn 0.5s ease forwards" }}>Animation Loading…</div>
+        }
       </div>
     </section>
   );

@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Timer } from "three";
-import gsap from "gsap";
+import { loadNetherwingGLTF } from "./loadNetherwingGLTF";
 
 export default function ClawScene() {
   const mountRef = useRef(null);
@@ -48,8 +47,7 @@ export default function ClawScene() {
 
     const clawMeshes = [];
 
-    const loader = new GLTFLoader();
-    loader.load("/netherwing_pollux.glb", (gltf) => {
+    loadNetherwingGLTF().then((gltf) => {
       const dragon = gltf.scene;
       dragon.scale.set(35, 35, 35);
       dragon.position.set(0, -6, -5);
@@ -107,7 +105,7 @@ export default function ClawScene() {
 
         // Fade claw in as rift cracks open (CLAW_IMPACT=1.2 → fully visible by 1.8)
         const t = window.primaryDragonAction.time;
-        const FADE_START = 1.3;
+        const FADE_START = 1.0;
         const FADE_END   = 1.8;
         const opacity = Math.min(1, Math.max(0, (t - FADE_START) / (FADE_END - FADE_START)));
         for (const m of clawMeshes) m.material.opacity = opacity;

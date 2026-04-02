@@ -157,7 +157,7 @@ function StatusTag() {
   );
 }
 
-export default function Portfolio() {
+export default function Portfolio({ modelReady }) {
   const [riftTriggered, setRiftTriggered] = useState(false);
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export default function Portfolio() {
 
       <main>
         {/* Hero is transparent — rift canvas shows through as its background */}
-        <Hero riftTriggered={riftTriggered} />
+        <Hero riftTriggered={riftTriggered} modelReady={modelReady} />
 
         {/* Opaque cover so portfolio sections scroll over the rift cleanly */}
         <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15 }}>

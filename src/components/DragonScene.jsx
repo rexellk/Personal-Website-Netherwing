@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { Timer } from "three";
+import { loadNetherwingGLTF } from "./loadNetherwingGLTF";
 import gsap from "gsap";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -137,8 +137,7 @@ export default function DragonScene() {
     });
     // -------------------------
 
-    const loader = new GLTFLoader();
-    loader.load("/netherwing_pollux.glb", (gltf) => {
+    loadNetherwingGLTF().then((gltf) => {
       const dragon = gltf.scene;
       dragon.scale.set(45, 45, 45);
       dragon.position.set(0, -7, -5);
@@ -216,18 +215,15 @@ export default function DragonScene() {
       dragon.traverse((child) => {
         if (child.name === "Object_12") {
           child.visible = false;
-          console.log("SUCCESS: Original claw (Object_12) hidden!");
         }
         if (child.name === "Eye_L_047") {
           child.add(leftEyeMesh);
           leftEyeMesh.position.set(0, 0, -0.05);
-          console.log("SUCCESS: Left eye bone found and mesh attached!");
         }
 
         if (child.name === "Eye_R_048") {
           child.add(rightEyeMesh);
           rightEyeMesh.position.set(0, 0, 0.05);
-          console.log("SUCCESS: Right eye bone found and mesh attached!");
         }
       });
 
@@ -338,16 +334,16 @@ export default function DragonScene() {
           modifiers: {
             x: (_) => {
               const time = tl.progress();
-              const decay = 1 - time;
-              const shakeX = (Math.random() - 0.5) * 0.5 * decay;
-              window.shakeOffset.x = shakeX; // Store for other scenes
+              const decay = Math.pow(1 - time, 0.6); // slower decay
+              const shakeX = (Math.random() - 0.5) * 0.6 * decay;
+              window.shakeOffset.x = shakeX;
               return 0 + shakeX;
             },
             y: (_) => {
               const time = tl.progress();
-              const decay = 1 - time;
-              const shakeY = (Math.random() - 0.5) * 0.5 * decay;
-              window.shakeOffset.y = shakeY; // Store for other scenes
+              const decay = Math.pow(1 - time, 0.6);
+              const shakeY = (Math.random() - 0.5) * 0.6 * decay;
+              window.shakeOffset.y = shakeY;
               return 0 + shakeY;
             },
           },
@@ -376,11 +372,8 @@ export default function DragonScene() {
         riftAction.paused = true;
       };
 
-      // In case scroll fired before model finished loading
-      if (window.riftPendingStart) {
-        window.startDragonAnimation();
-        window.riftPendingStart = false;
-      }
+      // Signal ready — App.jsx may already be waiting for this
+      window.dispatchEvent(new CustomEvent('dragonReady'));
     });
 
     // const clock = new THREE.Clock()
