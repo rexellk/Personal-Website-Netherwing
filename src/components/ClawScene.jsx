@@ -39,6 +39,13 @@ export default function ClawScene() {
     rimLight.position.set(-3, 0, -2);
     scene.add(rimLight);
 
+    // Rift light: purple point light behind claws to simulate rift glow
+    const riftLight = new THREE.PointLight(0xcc33ff, 25, 50);
+    riftLight.position.set(0, 0, -3);
+    scene.add(riftLight);
+
+
+
     const loader = new GLTFLoader();
     loader.load("/netherwing_pollux.glb", (gltf) => {
       const dragon = gltf.scene;
