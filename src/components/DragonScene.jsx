@@ -56,6 +56,51 @@ export default function DragonScene() {
     rimLight.position.set(-3, 0, -2);
     scene.add(rimLight);
 
+    // --- BUTTERFLY SWARM SETUP ---
+    const COUNT = 100; // Adjust for swarm density
+    const dummy = new THREE.Object3D();
+    const butterflyData = [];
+    let swarm;
+
+    // Load butterfly texture
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load("/Butterfly_Sprite.png", (texture) => {
+      // Optimization: Turn off mipmaps for small textures
+      texture.minFilter = THREE.LinearFilter;
+
+      // Create material with texture
+      const wingMat = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 2.0,
+        color: new THREE.Color(0xcc33ff).multiplyScalar(2.5), // Vibrant purple glow
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending, // Magical glow effect
+        alphaTest: 1.0, // Show more of the texture
+      });
+
+      // Create the Geometry (Plane for texture)
+      const wingGeo = new THREE.PlaneGeometry(0.4, 0.4);
+
+      swarm = new THREE.InstancedMesh(wingGeo, wingMat, COUNT);
+      scene.add(swarm);
+
+      // Initialize Random Positions
+      for (let i = 0; i < COUNT; i++) {
+        butterflyData.push({
+          pos: new THREE.Vector3(
+            (Math.random() - 0.5) * 4, // Close to dragon's head region
+            -2 + (Math.random() - 0.5) * 4, // Around head height
+            -5 + (Math.random() - 0.5) * 3, // Around dragon's Z
+          ),
+          speed: 0.01 + Math.random() * 0.02,
+          offset: Math.random() * Math.PI * 2,
+          phase: Math.random() * Math.PI,
+        });
+      }
+    });
+    // -------------------------
+
     const loader = new GLTFLoader();
     loader.load("/netherwing_pollux.glb", (gltf) => {
       const dragon = gltf.scene;
@@ -68,7 +113,7 @@ export default function DragonScene() {
 
       const eyeMat = new THREE.MeshBasicMaterial({
         // Multiply the color to make it aggressively bright for the Bloom pass
-        color: new THREE.Color(0xcc33ff).multiplyScalar(20),
+        color: new THREE.Color(0xE51247).multiplyScalar(20),
         transparent: true,
         opacity: 0, // Start invisible for the GSAP animation
         // depthTest: false, // Keep shining through the eyelids
@@ -79,9 +124,9 @@ export default function DragonScene() {
       const rightEyeMesh = new THREE.Mesh(eyeGeo, eyeMat);
 
       // Scale (X, Y, Z) - Stretch it wide, flatten the height
-      leftEyeMesh.scale.set(1.5, 0.8, 1.0); 
+      leftEyeMesh.scale.set(1.5, 0.8, 1.0);
       rightEyeMesh.scale.set(1.5, 0.8, 1.0);
-      
+
       let eyeLights = [leftEyeMesh, rightEyeMesh];
 
       // Traverse to find the exact eye bones from the rig
@@ -104,11 +149,11 @@ export default function DragonScene() {
       });
 
       // Add PointLights to make the eyes cast light on the dragon
-      const leftLight = new THREE.PointLight(0xcc33ff, 3, 20);
+      const leftLight = new THREE.PointLight(0xE51247, 3, 20);
       leftEyeMesh.add(leftLight);
       leftLight.position.set(0, 0, 0.05);
 
-      const rightLight = new THREE.PointLight(0xcc33ff, 3, 20);
+      const rightLight = new THREE.PointLight(0xE51247, 3, 20);
       rightEyeMesh.add(rightLight);
       rightLight.position.set(0, 0, -0.05);
 
@@ -238,7 +283,6 @@ export default function DragonScene() {
 
     // const clock = new THREE.Clock()
     const timer = new Timer();
-    
 
     function animate() {
       requestAnimationFrame(animate);
@@ -249,6 +293,29 @@ export default function DragonScene() {
       if (mixerRef.current) {
         mixerRef.current.update(delta);
       }
+
+      // --- ANIMATE BUTTERFLY SWARM ---
+      if (swarm) {
+        const time = performance.now() * 0.001;
+
+        butterflyData.forEach((b, i) => {
+          // 1. SWARM MOVEMENT (Circular wandering)
+          b.pos.x += Math.sin(time * b.speed + b.offset) * 0.02;
+          b.pos.y += Math.cos(time * b.speed + b.phase) * 0.01;
+          b.pos.z += Math.sin(time * b.speed) * 0.02;
+
+          // 2. WING FLAP + ROTATION (sprite animation)
+          const flap = Math.sin(time * 15 + b.offset) * 0.3; // flap wing angle
+
+          dummy.position.copy(b.pos);
+          dummy.rotation.set(0.4, time * 0.5 + b.offset, flap); // slow z-rotation with wing flap
+          dummy.updateMatrix();
+          swarm.setMatrixAt(i, dummy.matrix);
+        });
+
+        swarm.instanceMatrix.needsUpdate = true;
+      }
+      // ----------------------
 
       // Use composer for post-processing (bloom)
       composer.render();
