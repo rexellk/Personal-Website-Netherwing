@@ -55,7 +55,7 @@ export default function Hero({ riftTriggered }) {
         overflow: "hidden",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.4s ease",
-        pointerEvents: riftTriggered ? "none" : "auto",
+        pointerEvents: visible ? "auto" : "none",
       }}
     >
       <BotanicLeft />
@@ -85,8 +85,8 @@ export default function Hero({ riftTriggered }) {
       </p>
 
       <div className="pv-cta-row">
-        <a href="#projects" className="pv-btn-primary">View Work</a>
-        <a href="#contact" className="pv-btn-ghost">Say Hello</a>
+        <a href="https://drive.google.com/file/d/10dNoRvINeiCV5MuUxld_YrD9HZ1axYkH/view?usp=sharing" className="pv-btn-primary" target="_blank" rel="noreferrer">View Resume</a>
+        <a href="mailto:rexellk@umich.edu" className="pv-btn-ghost">Get In Touch</a>
       </div>
 
       <div className="pv-scroll-hint">
