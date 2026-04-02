@@ -32,38 +32,22 @@ export default function RiftCanvas() {
     const TEAR_Y0 = 0.04;
     const TEAR_Y1 = 0.96;
 
-    // Sharp, jagged noise for shattered glass effect
-    const tearNoise = Array.from({ length: N_TEAR + 1 }, (_, i) => {
-      // Use multiple aggressive noise functions for sharp, angular edges
-      const base =
-        Math.sin(i * 2.71828 + 0.3) * 30 +
-        Math.sin(i * 5.31415 + 0.9) * 18 +
-        Math.sin(i * 0.91 + 2.2) * 12;
-      // Add high-frequency noise for sharper peaks
-      const sharp =
-        Math.sin(i * 13.7 + 1.1) * 20 + Math.sin(i * 7.3 + 0.5) * 15;
-      return base + sharp;
-    });
-
-    function getTearPts(halfOpen, strain = 0) {
-      // Calculate the longest possible dimension (the diagonal) for full coverage when rotated
-      const maxSpan = Math.hypot(W, H) * 1.2; // 1.2 adds buffer
+    function getTearPts(halfOpen, t) {
+      const maxSpan = Math.hypot(W, H) * 1.2;
 
       return Array.from({ length: N_TEAR + 1 }, (_, i) => {
-        // Map Y coordinates across the diagonal instead of just H
         const y = lerp(cy - maxSpan / 2, cy + maxSpan / 2, i / N_TEAR);
-        const noise = tearNoise[i];
 
-        // Add high-frequency vibration during strain (creates struggling effect)
-        const strainVibration =
-          strain *
-          (Math.sin(i * 3.7 + performance.now() * 0.01) * 25 +
-            Math.sin(i * 5.1) * 15);
+        // Injecting 't' makes the sine waves crawl — edges ripple like fabric in the wind
+        const noise =
+          Math.sin(i * 0.6 + t * 3.5) * 20 +
+          Math.sin(i * 1.5 - t * 2.0) * 12 +
+          Math.sin(i * 2.8 + t * 5.0) * 8;
 
         return {
           y,
-          lx: cx + noise - halfOpen * 0.8 + strainVibration,
-          rx: cx + noise + halfOpen * 0.7 + strainVibration,
+          lx: cx + noise - halfOpen * 0.8,
+          rx: cx + noise + halfOpen * 0.7,
         };
       });
     }
@@ -76,12 +60,14 @@ export default function RiftCanvas() {
       riftEnd: 5.8,
     };
 
-    const STARS = Array.from({ length: 220 }, (_, i) => ({
+    const STARS = Array.from({ length: 350 }, (_, i) => ({
       x: dr(i * 3),
       y: dr(i * 3 + 1),
-      r: dr2(i * 3 + 2) * 1.8 + 0.3,
-      bri: dr(i * 3 + 3) * 0.55 + 0.18,
+      r: dr2(i * 3 + 2) * 1.6 + 0.2,
+      bri: dr(i * 3 + 3) * 0.8 + 0.2,
       ph: dr2(i) * Math.PI * 2,
+      vx: (dr2(i + 100) - 0.5) * 0.03,
+      vy: (dr(i + 200) - 0.5) * 0.03 + 0.01,
     }));
 
     const PARTS = Array.from({ length: 160 }, (_, i) => ({
@@ -110,12 +96,27 @@ export default function RiftCanvas() {
       ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, W, H);
       for (const s of STARS) {
-        const twinkle = 0.5 + 0.5 * Math.sin(s.ph + t * 1.5);
+        s.x = (s.x + s.vx * 0.016) % 1;
+        s.y = (s.y - s.vy * 0.016) % 1;
+        if (s.x < 0) s.x += 1;
+        if (s.y < 0) s.y += 1;
+
+        const twinkle = 0.5 + 0.5 * Math.sin(s.ph + t * 0.3);
+
         ctx.beginPath();
         ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+
+        if (s.r > 1.2) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "#cc33ff";
+        } else {
+          ctx.shadowBlur = 0;
+        }
+
         ctx.fillStyle = `rgba(255,255,255,${s.bri * twinkle})`;
         ctx.fill();
       }
+      ctx.shadowBlur = 0;
       if (atmosP > 0) {
         const g = ctx.createRadialGradient(
           cx,
@@ -343,15 +344,10 @@ export default function RiftCanvas() {
       const partP = eOut(ph(t, 4.0, 8.5));
       const fadeP = eIn(ph(t, 15.0, 17.0));
 
-      // Calculate strain intensity (when claw is gripping/struggling with the rift)
-      // Peaks during the impact and opening phase
-      const strainIntensity = eOut(
-        ph(dragonTime, CLAW_IMPACT, CLAW_IMPACT + 0.8),
-      );
 
       const halfOpen = (crackP * 0.04 + eOut(riftP) * 0.96) * maxHalfOpen;
       const glow = safe(halfOpen / (maxHalfOpen * 0.4));
-      const pts = getTearPts(halfOpen, strainIntensity);
+      const pts = getTearPts(halfOpen, t);
 
       // Draw the background normally (unrotated)
       drawBg(glow, t);

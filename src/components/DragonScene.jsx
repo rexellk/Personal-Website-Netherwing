@@ -56,6 +56,42 @@ export default function DragonScene() {
     rimLight.position.set(-3, 0, -2);
     scene.add(rimLight);
 
+    // ==========================================
+    // --- DEEP SPACE GALAXY SETUP ---
+    // ==========================================
+    const starCount = 1500;
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(starCount * 3);
+    const starColors = new Float32Array(starCount * 3);
+
+    for (let i = 0; i < starCount * 3; i += 3) {
+      starPos[i]     = (Math.random() - 0.5) * 100;
+      starPos[i + 1] = (Math.random() - 0.5) * 100;
+      starPos[i + 2] = -40 - Math.random() * 40;
+
+      const isPurple = Math.random() > 0.6;
+      const intensity = 2.0 + Math.random() * 5.0;
+
+      starColors[i]     = (isPurple ? 0.8 : 1.0) * intensity;
+      starColors[i + 1] = (isPurple ? 0.2 : 1.0) * intensity;
+      starColors[i + 2] = intensity;
+    }
+
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    starGeo.setAttribute("color", new THREE.BufferAttribute(starColors, 3));
+
+    const starMat = new THREE.PointsMaterial({
+      size: 0.15,
+      vertexColors: true,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+
+    const starfield = new THREE.Points(starGeo, starMat);
+    scene.add(starfield);
+    // ==========================================
+
     // --- BUTTERFLY SWARM SETUP ---
     const COUNT = 100; // Adjust for swarm density
     const dummy = new THREE.Object3D();
@@ -347,6 +383,8 @@ export default function DragonScene() {
       // --- ANIMATE BUTTERFLY SWARM ---
       if (swarm) {
         const time = performance.now() * 0.001;
+
+        starfield.rotation.z = time * 0.03;
 
         butterflyData.forEach((b, i) => {
           // 1. SWARM MOVEMENT (Circular wandering)
