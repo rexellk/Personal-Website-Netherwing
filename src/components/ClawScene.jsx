@@ -46,6 +46,8 @@ export default function ClawScene() {
 
 
 
+    const clawMeshes = [];
+
     const loader = new GLTFLoader();
     loader.load("/netherwing_pollux.glb", (gltf) => {
       const dragon = gltf.scene;
@@ -53,9 +55,20 @@ export default function ClawScene() {
       dragon.position.set(0, -6, -5);
 
       // Hide everything except Object_12 (the claw)
+      // Start claw fully transparent — fade in as rift opens
       dragon.traverse((child) => {
         if (child.isMesh) {
           child.visible = child.name === "Object_12";
+          if (child.name === "Object_12") {
+            // Normalise to single material regardless of whether it's an array
+            const src = Array.isArray(child.material) ? child.material[0] : child.material;
+            const mat = src.clone();
+            mat.transparent = true;
+            mat.opacity = 0;
+            mat.needsUpdate = true;
+            child.material = mat;
+            clawMeshes.push(child);
+          }
         }
       });
 
@@ -90,8 +103,14 @@ export default function ClawScene() {
         // Sync both time AND timeScale from DragonScene
         actionRef.current.time = window.primaryDragonAction.time;
         actionRef.current.timeScale = window.primaryDragonAction.timeScale;
-        // Update mixer with 0 delta to instantly apply that frame
         mixerRef.current.update(0);
+
+        // Fade claw in as rift cracks open (CLAW_IMPACT=1.2 → fully visible by 1.8)
+        const t = window.primaryDragonAction.time;
+        const FADE_START = 1.3;
+        const FADE_END   = 1.8;
+        const opacity = Math.min(1, Math.max(0, (t - FADE_START) / (FADE_END - FADE_START)));
+        for (const m of clawMeshes) m.material.opacity = opacity;
       } else if (mixerRef.current) {
         mixerRef.current.update(delta);
       }
