@@ -86,17 +86,33 @@ void main() {
   vec3 cDark  = vec3(0.05, 0.01, 0.10);
   vec3 col    = mix(cBlack, cDark, cloth * 0.7);
 
-  // Edge glow — overbright purple so it looks lit/bloomed
+  // Multi-layer fake bloom on the rift edge
   if (scaledHalf > 0.0005) {
     float edgeDist  = dist - scaledHalf;
     float shimmer   = 0.7 + 0.3 * sin(y * 100.0 + uTime * 4.5);
-    // uBurstGlow spikes during opening — multiplies base glow up to 4x
     float burstMult = 1.0 + uBurstGlow * 3.5;
-    float glow      = exp(-edgeDist * 60.0) * uRiftP * shimmer * burstMult;
-    // During burst: edge goes toward near-white hot
-    vec3  edgeBase  = mix(vec3(0.45, 0.10, 0.90), vec3(0.85, 0.55, 1.0), glow);
-    vec3  edgeHot   = mix(edgeBase, vec3(1.0, 0.90, 1.0), uBurstGlow * 0.8);
-    col = mix(col, edgeHot * (2.5 + uBurstGlow * 4.0), clamp(glow, 0.0, 1.0));
+
+    // Layer 1 — tight bright core (sharp inner lip)
+    float core = exp(-edgeDist * 180.0) * uRiftP * shimmer * burstMult;
+    // Layer 2 — medium spread (main glow body)
+    float mid  = exp(-edgeDist *  55.0) * uRiftP * shimmer * burstMult * 0.65;
+    // Layer 3 — wide soft halo (bleeds into fabric)
+    float halo = exp(-edgeDist *  14.0) * uRiftP * 0.30 * burstMult;
+
+    // Core: near-white hot purple
+    vec3 cCore = mix(vec3(0.75, 0.30, 1.00), vec3(1.00, 0.92, 1.00), core);
+    cCore = mix(cCore, vec3(1.0, 0.95, 1.0), uBurstGlow * 0.9);
+
+    // Mid: saturated purple
+    vec3 cMid  = vec3(0.50, 0.08, 0.95);
+
+    // Halo: deep blue-purple bleed
+    vec3 cHalo = vec3(0.18, 0.02, 0.40);
+
+    col += cCore * core * (2.8 + uBurstGlow * 4.5);
+    col += cMid  * mid  * 1.8;
+    col += cHalo * halo * 1.2;
+    col  = clamp(col, 0.0, 2.5);
   }
 
   // Hairline crack before full tear
