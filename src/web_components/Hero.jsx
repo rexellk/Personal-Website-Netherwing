@@ -58,7 +58,7 @@ export default function Hero({ riftTriggered, modelReady }) {
         alignItems: "center",
         justifyContent: "center",
         position: "relative",
-        zIndex: 10,
+        zIndex: 15,
         overflow: "hidden",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.4s ease",

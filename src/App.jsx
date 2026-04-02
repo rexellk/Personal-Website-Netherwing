@@ -75,6 +75,8 @@ export default function App() {
         setFlashing(true)
 
         setTimeout(() => {
+          // Freeze rift at fully-open dragonTime before hiding dragon
+          window.riftFrozenTime = window.primaryDragonAction?.time ?? 5.0
           if (window.hideDragon) window.hideDragon()
           window.dispatchEvent(new CustomEvent('riftFlashDone'))
           document.body.style.overflow = ''

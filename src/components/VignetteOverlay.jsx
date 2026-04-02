@@ -7,7 +7,7 @@ export default function VignetteOverlay() {
         left: 0,
         width: "100vw",
         height: "100vh",
-        zIndex: 5, 
+        zIndex: 12,
         pointerEvents: "none",
         background:
           // 1. Moved center to 40% (Leaves room at the top for the fade to exist)
