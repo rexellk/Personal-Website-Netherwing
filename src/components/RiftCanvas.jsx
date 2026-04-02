@@ -118,7 +118,7 @@ void main() {
   // Hairline crack before full tear
   if (uCrackP > 0.0 && scaledHalf < 0.004) {
     float crack = exp(-dist * 1400.0) * uCrackP;
-    col += vec3(0.80, 0.45, 1.0) * crack * (4.0 + uBurstGlow * 8.0);
+    col += vec3(0.80, 0.45, 1.0) * crack * (4.0 + uBurstGlow * 15.0);
   }
 
   gl_FragColor = vec4(col, 1.0);

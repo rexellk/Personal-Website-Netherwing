@@ -4,6 +4,7 @@ import DragonScene from './components/DragonScene'
 import VignetteOverlay from './components/VignetteOverlay'
 import RiftCanvas from './components/RiftCanvas'
 import ClawScene from './components/ClawScene'
+import RiftParticles from './components/RiftParticles'
 import Portfolio from './web_components/Portfolio'
 
 const ANIMATION_MS = 5000
@@ -96,6 +97,7 @@ export default function App() {
       <VignetteOverlay />
       <DragonScene />
       {animating && <ClawScene />}
+      {animating && <RiftParticles />}
 
       <Portfolio modelReady={modelReady} />
 
