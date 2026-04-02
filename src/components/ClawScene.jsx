@@ -42,8 +42,8 @@ export default function ClawScene() {
     const loader = new GLTFLoader();
     loader.load("/netherwing_pollux.glb", (gltf) => {
       const dragon = gltf.scene;
-      dragon.scale.set(30, 30, 30);
-      dragon.position.set(0, -5, -5);
+      dragon.scale.set(35, 35, 35);
+      dragon.position.set(0, -6, -5);
 
       // Hide everything except Object_12 (the claw)
       dragon.traverse((child) => {
