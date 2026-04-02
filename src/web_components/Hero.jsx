@@ -93,7 +93,7 @@ export default function Hero({ riftTriggered, modelReady }) {
 
       <div className="pv-cta-row">
         <a href="https://drive.google.com/file/d/10dNoRvINeiCV5MuUxld_YrD9HZ1axYkH/view?usp=sharing" className="pv-btn-primary" target="_blank" rel="noreferrer">View Resume</a>
-        <a href="mailto:rexellk@umich.edu" className="pv-btn-ghost">Get In Touch</a>
+        <a href="mailto:k.rexnath@gmail.com" className="pv-btn-ghost">Get In Touch</a>
       </div>
 
       <div style={{ position: "absolute", bottom: 72, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, opacity: 0, animation: "pv-fadeIn 1s ease 2.2s forwards" }}>

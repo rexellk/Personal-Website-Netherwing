@@ -47,8 +47,8 @@ export default function Contact() {
           </p>
 
           <div style={S.links}>
-            <a href="mailto:rexellk@umich.edu" className="pv-contact-link primary-link">
-              rexellk@umich.edu
+            <a href="mailto:k.rexnath@gmail.com" className="pv-contact-link primary-link">
+              Email Me
             </a>
             <a href="https://linkedin.com/in/rexellkurniawan" className="pv-contact-link" target="_blank" rel="noreferrer">
               LinkedIn
