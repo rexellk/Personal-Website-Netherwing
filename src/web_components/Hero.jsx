@@ -1,0 +1,80 @@
+const BotanicLeft = () => (
+  <svg
+    style={{ position: "absolute", left: 32, bottom: 80, opacity: 0.18, pointerEvents: "none", transform: "rotate(-12deg)" }}
+    width="180" height="300" viewBox="0 0 180 300" fill="none"
+  >
+    <path d="M90 290 Q85 240 70 200 Q55 160 40 120 Q25 80 30 40" stroke="rgba(199,125,255,0.5)" strokeWidth="1" fill="none" />
+    <path d="M70 200 Q40 190 20 170 Q0 150 10 120" stroke="rgba(199,125,255,0.35)" strokeWidth="0.8" fill="none" />
+    <path d="M55 160 Q75 140 90 110 Q105 80 100 50" stroke="rgba(199,125,255,0.35)" strokeWidth="0.8" fill="none" />
+    <ellipse cx="45" cy="172" rx="12" ry="6" fill="rgba(199,125,255,0.12)" transform="rotate(-30 45 172)" />
+    <ellipse cx="92" cy="112" rx="10" ry="5" fill="rgba(255,179,198,0.18)" transform="rotate(20 92 112)" />
+    <circle cx="30" cy="42" r="5" fill="rgba(255,179,198,0.28)" />
+    <circle cx="98" cy="51" r="4" fill="rgba(224,170,255,0.28)" />
+  </svg>
+);
+
+const BotanicRight = () => (
+  <svg
+    style={{ position: "absolute", right: 32, top: 110, opacity: 0.18, pointerEvents: "none", transform: "rotate(18deg) scaleX(-1)" }}
+    width="180" height="300" viewBox="0 0 180 300" fill="none"
+  >
+    <path d="M90 290 Q85 240 70 200 Q55 160 40 120 Q25 80 30 40" stroke="rgba(199,125,255,0.5)" strokeWidth="1" fill="none" />
+    <path d="M70 200 Q40 190 20 170 Q0 150 10 120" stroke="rgba(199,125,255,0.35)" strokeWidth="0.8" fill="none" />
+    <path d="M55 160 Q75 140 90 110 Q105 80 100 50" stroke="rgba(199,125,255,0.35)" strokeWidth="0.8" fill="none" />
+    <ellipse cx="45" cy="172" rx="12" ry="6" fill="rgba(199,125,255,0.12)" transform="rotate(-30 45 172)" />
+    <circle cx="30" cy="42" r="5" fill="rgba(255,179,198,0.28)" />
+  </svg>
+);
+
+export default function Hero() {
+  return (
+    <section
+      id="hero"
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+        zIndex: 10,
+        overflow: "hidden",
+      }}
+    >
+      <BotanicLeft />
+      <BotanicRight />
+
+      <div style={{ textAlign: "center", position: "relative" }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: -60,
+            background: "radial-gradient(ellipse 65% 45% at 50% 50%, rgba(157,78,221,0.18), transparent 70%)",
+            pointerEvents: "none",
+          }}
+        />
+        <span className="pv-name-first">Rexell</span>
+        <span className="pv-name-last">Kurniawan</span>
+      </div>
+
+      <div className="pv-role-line">
+        <span style={{ fontSize: 12, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(199,125,255,0.72)" }}>
+          Software Engineer &nbsp;&middot;&nbsp; Builder &nbsp;&middot;&nbsp; U of Michigan
+        </span>
+      </div>
+
+      <p className="pv-sub-text">
+        Ann Arbor, Michigan &nbsp;&bull;&nbsp; San Francisco &rarr; May 2026
+      </p>
+
+      <div className="pv-cta-row">
+        <a href="#projects" className="pv-btn-primary">View Work</a>
+        <a href="#contact" className="pv-btn-ghost">Say Hello</a>
+      </div>
+
+      <div className="pv-scroll-hint">
+        <div className="pv-scroll-line" />
+      </div>
+    </section>
+  );
+}
