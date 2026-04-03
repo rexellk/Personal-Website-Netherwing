@@ -11,8 +11,9 @@ import DragonFly_2 from './components/DragonFly_2'
 
 const ANIMATION_MS = 5000
 const FLASH_DURATION = 550
-const AMBIENT_MAX_VOLUME  = 0.3   // full volume when at hero (0.0–1.0)
-const CROSSFADE_DURATION  = 1.0   // seconds for intro → ambient crossfade
+const AMBIENT_MAX_VOLUME  = 0.05   // full volume when at hero (0.0–1.0)
+const CROSSFADE_DURATION  = 5.0   // seconds for the overlap crossfade
+const CROSSFADE_OVERLAP   = 5.0   // seconds before intro ends to start ambient
 const SCROLL_FADE_RANGE   = 2000  // scrollY (px) at which ambient is fully silent
 
 export default function App() {
@@ -117,12 +118,20 @@ export default function App() {
           const startAt = ctx.currentTime + AUDIO_DELAY_MS / 1000
           src.start(startAt)
 
-          // When intro ends, crossfade into looping ambient
-          src.onended = () => {
-            if (window.audioMuted || !ambientBufferRef.current) return
+          // Schedule ambient to start CROSSFADE_OVERLAP seconds before intro ends,
+          // fading in while intro fades out simultaneously
+          const introDuration = audioBufferRef.current.duration
+          const crossfadeAt = startAt + introDuration - CROSSFADE_OVERLAP
+
+          if (ambientBufferRef.current && crossfadeAt > ctx.currentTime) {
+            // Fade out intro
+            gain.gain.setValueAtTime(0.4, crossfadeAt)
+            gain.gain.linearRampToValueAtTime(0, crossfadeAt + CROSSFADE_DURATION)
+
+            // Fade in ambient
             const ambientGain = ctx.createGain()
-            ambientGain.gain.setValueAtTime(0, ctx.currentTime)
-            ambientGain.gain.linearRampToValueAtTime(AMBIENT_MAX_VOLUME, ctx.currentTime + CROSSFADE_DURATION)
+            ambientGain.gain.setValueAtTime(0, crossfadeAt)
+            ambientGain.gain.linearRampToValueAtTime(AMBIENT_MAX_VOLUME, crossfadeAt + CROSSFADE_DURATION)
             ambientGain.connect(ctx.destination)
             ambientGainRef.current = ambientGain
 
@@ -130,7 +139,7 @@ export default function App() {
             ambient.buffer = ambientBufferRef.current
             ambient.loop = true
             ambient.connect(ambientGain)
-            ambient.start()
+            ambient.start(crossfadeAt)
           }
         }
         // resume() unlocks the context from within the wheel gesture
