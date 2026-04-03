@@ -11,7 +11,7 @@ const BLUR_AMOUNT  = 3;     // CSS blur in pixels (0 = sharp, higher = blurrier)
 const ANIM_SPEED   = 0.4;   // animation playback speed (1.0 = normal)
 const FLY_START_X  =  8;    // world X where dragon enters (right side)
 const FLY_END_X    = -15;    // world X where dragon exits (left side)
-const FLY_Y        = 2.75;   // starting vertical position
+const FLY_Y        = 3.0;   // starting vertical position
 const FLY_DURATION = 0.6;   // seconds to cross the screen
 const DIVE_Y_SPEED = 0.1;   // world units per second downward drift
 const DIVE_Y_MAX   = 10.0;  // max total downward shift
