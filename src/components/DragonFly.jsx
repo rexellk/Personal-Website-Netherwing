@@ -10,11 +10,12 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 const ANIM_SPEED   = 0.4;   // animation playback speed (1.0 = normal)
 const FLY_START_X  = -8;    // world X where dragon enters
 const FLY_END_X    =  8;    // world X where dragon exits
-const FLY_Y        = 4.0;   // starting vertical position
+const FLY_Y        = 0.0;   // starting vertical position
 const FLY_DURATION = 2.0;   // seconds to cross the screen
 const DIVE_Y_SPEED = 2.0;   // world units per second downward drift
 const DIVE_Y_MAX   = 10.0;  // max total downward shift
 const BANK_SPEED   = 1.3;   // radians per second Z rotation (banking turn)
+const BANK_OFFSET  = -0.4;   // starting Z rotation offset in radians (e.g. 0.3 = slight initial tilt)
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DragonFly() {
@@ -110,7 +111,7 @@ export default function DragonFly() {
         roarAction.timeScale = ANIM_SPEED;
         dragon.position.set(FLY_START_X, FLY_Y, 0);
         dragon.rotation.y = Math.PI / 2;
-        dragon.rotation.z = 0;
+        dragon.rotation.z = BANK_OFFSET;
         roarTl.restart();
       };
 
@@ -137,7 +138,7 @@ export default function DragonFly() {
         flyTime += delta;
         const diveY = Math.min(flyTime * DIVE_Y_SPEED, DIVE_Y_MAX);
         dragonRef.position.y = FLY_Y - diveY;
-        dragonRef.rotation.z = flyTime * BANK_SPEED;
+        dragonRef.rotation.z = BANK_OFFSET + flyTime * BANK_SPEED;
       }
 
       composer.render();
