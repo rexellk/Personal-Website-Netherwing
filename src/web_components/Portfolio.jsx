@@ -160,9 +160,12 @@ function StatusTag() {
 export default function Portfolio({ modelReady }) {
   const [riftTriggered, setRiftTriggered] = useState(false);
   const aboutRef = useRef(null);
+  const contactRef = useRef(null);
   const dragonFly2Fired = useRef(false);
   const dragonSceneDone = useRef(false);
   const experiencePassed = useRef(false);
+  const dragonFlyFired = useRef(false);
+  const DRAGONFLY_TRIGGER = 1.5; // 0.0 = top of screen, 1.0 = bottom of screen, >1.0 = below viewport
 
   useEffect(() => {
     const onTrigger = () => setRiftTriggered(true);
@@ -205,6 +208,30 @@ export default function Portfolio({ modelReady }) {
     };
   }, []);
 
+  // Fire DragonFly once when the Contact ("Let's Build") section enters the viewport
+  useEffect(() => {
+    const el = contactRef.current;
+    if (!el) return;
+    function tryFireDragonFly() {
+      if (dragonFlyFired.current) return;
+      const top = el.getBoundingClientRect().top;
+      if (top < window.innerHeight * DRAGONFLY_TRIGGER && window.startDragonRoar) {
+        dragonFlyFired.current = true;
+        window.startDragonRoar();
+      }
+    }
+
+    const onScroll = () => tryFireDragonFly();
+
+    // Also try once the model finishes loading, in case the section was already visible
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('dragonRoarReady', tryFireDragonFly);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('dragonRoarReady', tryFireDragonFly);
+    };
+  }, []);
+
   return (
     <div
       style={{
@@ -242,7 +269,9 @@ export default function Portfolio({ modelReady }) {
           <Experience />
           <SectionDivider variant="purple" />
           <Projects />
-          <Contact />
+          <div ref={contactRef}>
+            <Contact />
+          </div>
         </div>
       </main>
     </div>

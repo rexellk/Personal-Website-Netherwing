@@ -54,13 +54,13 @@ export default function DragonScene() {
     scene.add(hemiLight);
 
     // Key light — neutral-white base so the model's own colors show, with a purple tint
-    const dirLight = new THREE.DirectionalLight(0xddbbff, 2.5);
+    const dirLight = new THREE.DirectionalLight(0xd1abf7, 2.5);
     dirLight.position.set(3, 6, 4);
     scene.add(dirLight);
 
     // Rim light — deep blue-violet from behind/left
-    const rimLight = new THREE.DirectionalLight(0x3300cc, 2.0);
-    rimLight.position.set(-4, 1, -3);
+    const rimLight = new THREE.DirectionalLight(0xcb9ef7, 1.0);
+    rimLight.position.set(-3, 1, -3);
     scene.add(rimLight);
 
     // Under-fill — subtle bounce so the belly isn't black

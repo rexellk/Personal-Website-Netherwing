@@ -240,7 +240,25 @@ export default function DragonFly() {
         .to(dragon.position, { x: FLY_END_X, duration: FLY_DURATION, ease: "none" }, 0)
         .to(camera.position, { z: 3.5, duration: 1.0, ease: "power2.inOut" }, 0);
 
+      let flyHasRun = false;
       window.startDragonRoar = () => {
+        if (flyHasRun) return;
+        flyHasRun = true;
+        // Anchor to scroll position, extend to doc bottom so sticky canvas isn't clipped
+        const TOP_PADDING = 300; // extra px above trigger point to avoid clipping
+        const scrollY = Math.max(0, window.scrollY - TOP_PADDING);
+        const remainingH = document.body.scrollHeight - scrollY;
+        document.body.appendChild(el);
+        el.style.position = 'absolute';
+        el.style.top = scrollY + 'px';
+        el.style.left = '0';
+        el.style.width = '100vw';
+        el.style.height = remainingH + 'px';
+        el.style.zIndex = '20';
+        el.style.overflow = 'visible';
+        // Canvas sticks to viewport so animation plays in full view while scrolling
+        renderer.domElement.style.position = 'sticky';
+        renderer.domElement.style.top = '0';
         flyTime = 0;
         roarAction.timeScale = ANIM_SPEED;
         dragon.position.set(FLY_START_X, FLY_Y, 0);
@@ -341,7 +359,8 @@ export default function DragonFly() {
     animate();
 
     return () => {
-      el.removeChild(renderer.domElement);
+      if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
+      if (el.parentNode) el.parentNode.removeChild(el);
       renderer.dispose();
     };
   }, []);
@@ -354,7 +373,7 @@ export default function DragonFly() {
         top: 0, left: 0,
         width: "100vw",
         height: "100vh",
-        zIndex: 2,
+        zIndex: 20,
         pointerEvents: "none",
         background: "transparent",
       }}

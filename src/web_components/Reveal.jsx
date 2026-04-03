@@ -11,13 +11,15 @@ export default function Reveal({ children, delay = 0, style = {} }) {
         if (entry.isIntersecting) {
           el.style.opacity = "1";
           el.style.transform = "translateY(0)";
+          // Clear transform after transition completes so it no longer creates a stacking context
+          setTimeout(() => { el.style.transform = "none"; }, (delay + 0.85) * 1000);
         }
       },
       { threshold: 0.12 }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [delay]);
 
   return (
     <div

@@ -67,7 +67,6 @@ export default function App() {
       window.dispatchEvent(new CustomEvent('riftTrigger'))
       window.startDragonAnimation?.()
       
-      window.startDragonRoar?.()
 
       if (audioCtxRef.current && audioBufferRef.current) {
         const ctx = audioCtxRef.current
@@ -113,7 +112,7 @@ export default function App() {
 
   return (
     <main style={{ background: '#000' }}>
-      {/* <DragonFly/> */}
+      <DragonFly/>
       <DragonFly_2/>
       <RiftCanvas />
       <VignetteOverlay />
