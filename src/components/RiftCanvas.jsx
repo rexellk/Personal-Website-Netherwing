@@ -152,7 +152,7 @@ export default function RiftCanvas() {
       uHalfOpen:  { value: 0 },
       uAspect:    { value: W / H },
       uBurstGlow:  { value: 0 },
-      uRiftScale:  { value: 1.4 }, // ← < 1.0 = narrower opening, > 1.0 = wider
+      uRiftScale:  { value: 1.0 }, // ← < 1.0 = narrower opening, > 1.0 = wider
       uShake:      { value: new THREE.Vector2(0, 0) },
     };
 

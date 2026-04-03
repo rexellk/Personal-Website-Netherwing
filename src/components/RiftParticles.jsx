@@ -7,9 +7,9 @@ const OUTER_BRIGHTNESS = 1.5;   // overbright multiplier for particle outer ring
 const CORE_ALPHA       = 0.90;  // max alpha at center
 const OUTER_ALPHA      = 0.20;  // max alpha at edge
 
-const SPARK_SIZE_MIN   = 0.2;   // molten spark min size
+const SPARK_SIZE_MIN   = 0.5;   // molten spark min size
 const SPARK_SIZE_RANGE = 0.25;   // molten spark size variance (max = min + range)
-const DUST_SIZE_MIN    = 0.1;   // stardust min size
+const DUST_SIZE_MIN    = 0.3;   // stardust min size
 const DUST_SIZE_RANGE  = 0.3;   // stardust size variance
 
 const SPARK_LIFE_MIN   = 0.009; // molten spark min lifeSpeed (higher = dies faster)
