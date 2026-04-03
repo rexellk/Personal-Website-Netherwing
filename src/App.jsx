@@ -11,26 +11,58 @@ import DragonFly_2 from './components/DragonFly_2'
 
 const ANIMATION_MS = 5000
 const FLASH_DURATION = 550
+const AMBIENT_MAX_VOLUME  = 0.3   // full volume when at hero (0.0–1.0)
+const CROSSFADE_DURATION  = 1.0   // seconds for intro → ambient crossfade
+const SCROLL_FADE_RANGE   = 2000  // scrollY (px) at which ambient is fully silent
 
 export default function App() {
   const [animating, setAnimating] = useState(false)
   const [flashing, setFlashing] = useState(false)
   const [modelReady, setModelReady] = useState(false)
   const triggered = useRef(false)
+  const audioUnlocked = useRef(false)
+
+  // Track whether the user clicked before scrolling
+  useEffect(() => {
+    const onPointer = () => { audioUnlocked.current = true }
+    window.addEventListener('pointerdown', onPointer, { once: true })
+    return () => window.removeEventListener('pointerdown', onPointer)
+  }, [])
 
   // Create AudioContext + fetch buffer immediately on mount
   // resume() inside the wheel handler — wheel is a trusted gesture
   const audioCtxRef = useRef(null)
   const audioBufferRef = useRef(null)
+  const ambientBufferRef = useRef(null)
+  const ambientGainRef = useRef(null)
 
   useEffect(() => {
     const ctx = new AudioContext()
     audioCtxRef.current = ctx
-    fetch('/Netherwing-Intro.mp3')
+
+    fetch('/Netherwing-Intro-2.mp3')
       .then(r => r.arrayBuffer())
       .then(arr => ctx.decodeAudioData(arr))
       .then(buf => { audioBufferRef.current = buf })
       .catch(err => console.error('audio load error:', err))
+
+    fetch('/NetherRealm-Ambient.wav')
+      .then(r => r.arrayBuffer())
+      .then(arr => ctx.decodeAudioData(arr))
+      .then(buf => { ambientBufferRef.current = buf })
+      .catch(err => console.error('ambient load error:', err))
+  }, [])
+
+  // Scroll-based ambient volume
+  useEffect(() => {
+    function onScroll() {
+      const gain = ambientGainRef.current
+      if (!gain) return
+      const t = Math.min(1, window.scrollY / SCROLL_FADE_RANGE)
+      gain.gain.value = AMBIENT_MAX_VOLUME * (1 - t)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   // Wait for DragonScene to finish loading the GLB before allowing scroll trigger
@@ -68,17 +100,38 @@ export default function App() {
       window.startDragonAnimation?.()
       
 
-      if (audioCtxRef.current && audioBufferRef.current) {
+      if (!audioUnlocked.current) {
+        window.audioMuted = true
+      }
+
+      if (!window.audioMuted && audioCtxRef.current && audioBufferRef.current) {
         const ctx = audioCtxRef.current
         const AUDIO_DELAY_MS = 700
         const play = () => {
           const src = ctx.createBufferSource()
           src.buffer = audioBufferRef.current
           const gain = ctx.createGain()
-          gain.gain.value = 0.3  // ← 0.0 = silent, 1.0 = full volume
+          gain.gain.value = 0.4  // ← 0.0 = silent, 1.0 = full volume
           src.connect(gain)
           gain.connect(ctx.destination)
-          src.start(ctx.currentTime + AUDIO_DELAY_MS / 1000)
+          const startAt = ctx.currentTime + AUDIO_DELAY_MS / 1000
+          src.start(startAt)
+
+          // When intro ends, crossfade into looping ambient
+          src.onended = () => {
+            if (window.audioMuted || !ambientBufferRef.current) return
+            const ambientGain = ctx.createGain()
+            ambientGain.gain.setValueAtTime(0, ctx.currentTime)
+            ambientGain.gain.linearRampToValueAtTime(AMBIENT_MAX_VOLUME, ctx.currentTime + CROSSFADE_DURATION)
+            ambientGain.connect(ctx.destination)
+            ambientGainRef.current = ambientGain
+
+            const ambient = ctx.createBufferSource()
+            ambient.buffer = ambientBufferRef.current
+            ambient.loop = true
+            ambient.connect(ambientGain)
+            ambient.start()
+          }
         }
         // resume() unlocks the context from within the wheel gesture
         if (ctx.state === 'suspended') {

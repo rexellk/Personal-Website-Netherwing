@@ -7,6 +7,17 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
+// ── Butterfly tuning ──────────────────────────────────────────────────────────
+const BUTTERFLY_COLORS = [
+  new THREE.Color(2.5, 0.8, 5.0),  // lavender-white
+  new THREE.Color(3.5, 0.5, 6.0),  // deep violet
+  new THREE.Color(0.5, 5.0, 5.5),  // cyan-teal
+];
+const BUTTERFLY_BRIGHTNESS = 0.5;  // base color multiplier; instanceColor tints per-particle
+const GLOW_SIZE_MULT       = 0.00; // glow disc size relative to sprite size
+const GLOW_BRIGHTNESS      = 0.00;  // glow disc color multiplier
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function DragonScene() {
   const mountRef = useRef(null);
   const mixerRef = useRef(null);
@@ -109,6 +120,7 @@ export default function DragonScene() {
     const dummy = new THREE.Object3D();
     const butterflyData = [];
     let swarm;
+    let glowMesh;
 
     // Load butterfly texture
     const textureLoader = new THREE.TextureLoader();
@@ -121,7 +133,7 @@ export default function DragonScene() {
         map: texture,
         transparent: true,
         opacity: 2.0,
-        color: new THREE.Color(0xcc33ff).multiplyScalar(2.5), // Vibrant purple glow
+        color: new THREE.Color(BUTTERFLY_BRIGHTNESS, BUTTERFLY_BRIGHTNESS, BUTTERFLY_BRIGHTNESS), // instanceColor tints per-particle
         side: THREE.DoubleSide,
         blending: THREE.AdditiveBlending, // Magical glow effect
         alphaTest: 1.0, // Show more of the texture
@@ -144,8 +156,35 @@ export default function DragonScene() {
           speed: 0.01 + Math.random() * 0.02,
           offset: Math.random() * Math.PI * 2,
           phase: Math.random() * Math.PI,
+          colorIdx: Math.floor(Math.random() * BUTTERFLY_COLORS.length),
         });
       }
+
+      // ── Glow disc mesh (radial gradient, rendered behind each butterfly) ───────
+      const glowCanvas = document.createElement("canvas");
+      glowCanvas.width = 128; glowCanvas.height = 128;
+      const glowCtx = glowCanvas.getContext("2d");
+      const glowGrad = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      glowGrad.addColorStop(0,    "rgba(255, 255, 255, 1.0)");
+      glowGrad.addColorStop(0.35, "rgba(229,  18, 71, 0.6)");
+      glowGrad.addColorStop(1,    "rgba(80,    0, 180, 0.0)");
+      glowCtx.fillStyle = glowGrad;
+      glowCtx.fillRect(0, 0, 128, 128);
+
+      const glowTex = new THREE.CanvasTexture(glowCanvas);
+      const glowMat = new THREE.MeshBasicMaterial({
+        map: glowTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        color: new THREE.Color(GLOW_BRIGHTNESS, GLOW_BRIGHTNESS, GLOW_BRIGHTNESS),
+      });
+      const glowSize = 0.4 * GLOW_SIZE_MULT;
+      const glowGeo  = new THREE.PlaneGeometry(glowSize, glowSize);
+      glowMesh = new THREE.InstancedMesh(glowGeo, glowMat, COUNT);
+      glowMesh.frustumCulled = false;
+      scene.add(glowMesh);
+      // ─────────────────────────────────────────────────────────────────────────
     });
     // -------------------------
 
@@ -426,11 +465,27 @@ export default function DragonScene() {
 
           dummy.position.copy(b.pos);
           dummy.rotation.set(0.4, time * 0.5 + b.offset, flap); // slow z-rotation with wing flap
+          dummy.scale.setScalar(1);
           dummy.updateMatrix();
           swarm.setMatrixAt(i, dummy.matrix);
+          swarm.setColorAt(i, BUTTERFLY_COLORS[b.colorIdx]);
+
+          // Glow disc — same position, no rotation, slightly larger
+          if (glowMesh) {
+            dummy.rotation.set(0, 0, 0);
+            dummy.scale.setScalar(GLOW_SIZE_MULT);
+            dummy.updateMatrix();
+            glowMesh.setMatrixAt(i, dummy.matrix);
+            glowMesh.setColorAt(i, BUTTERFLY_COLORS[b.colorIdx]);
+          }
         });
 
         swarm.instanceMatrix.needsUpdate = true;
+        if (swarm.instanceColor) swarm.instanceColor.needsUpdate = true;
+        if (glowMesh) {
+          glowMesh.instanceMatrix.needsUpdate = true;
+          if (glowMesh.instanceColor) glowMesh.instanceColor.needsUpdate = true;
+        }
       }
       // ----------------------
 

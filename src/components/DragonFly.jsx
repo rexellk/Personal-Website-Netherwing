@@ -240,10 +240,14 @@ export default function DragonFly() {
         .to(dragon.position, { x: FLY_END_X, duration: FLY_DURATION, ease: "none" }, 0)
         .to(camera.position, { z: 3.5, duration: 1.0, ease: "power2.inOut" }, 0);
 
+      const flyAudio = new Audio("/DragonFly1.mp3");
+      flyAudio.volume = 0.5
+
       let flyHasRun = false;
       window.startDragonRoar = () => {
         if (flyHasRun) return;
         flyHasRun = true;
+        if (!window.audioMuted) flyAudio.play().catch(() => {});
         // Anchor to scroll position, extend to doc bottom so sticky canvas isn't clipped
         const TOP_PADDING = 300; // extra px above trigger point to avoid clipping
         const scrollY = Math.max(0, window.scrollY - TOP_PADDING);
