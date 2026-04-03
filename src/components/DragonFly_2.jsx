@@ -12,7 +12,7 @@ const ANIM_SPEED   = 0.4;   // animation playback speed (1.0 = normal)
 const FLY_START_X  =  8;    // world X where dragon enters (right side)
 const FLY_END_X    = -15;    // world X where dragon exits (left side)
 const FLY_Y        = 3.0;   // starting vertical position
-const FLY_DURATION = 0.6;   // seconds to cross the screen
+const FLY_DURATION = 0.4;   // seconds to cross the screen
 const DIVE_Y_SPEED = 0.1;   // world units per second downward drift
 const DIVE_Y_MAX   = 10.0;  // max total downward shift
 const BANK_SPEED   = 0.05;   // radians per second Z rotation (banking turn)
@@ -107,7 +107,10 @@ export default function DragonFly_2() {
         .to(dragon.position, { x: FLY_END_X, duration: FLY_DURATION, ease: "none" }, 0)
         .to(camera.position, { z: 3.5, duration: 1.0, ease: "power2.inOut" }, 0);
 
+      let fly2HasRun = false;
       window.startDragonFly2 = () => {
+        if (fly2HasRun) return;
+        fly2HasRun = true;
         flyTime = 0;
         roarAction.timeScale = ANIM_SPEED;
         dragon.position.set(FLY_START_X, FLY_Y, 0);
@@ -160,7 +163,7 @@ export default function DragonFly_2() {
         top: 0, left: 0,
         width: "100vw",
         height: "100vh",
-        zIndex: 2,
+        zIndex: 20,
         pointerEvents: "none",
         background: "transparent",
       }}

@@ -159,11 +159,50 @@ function StatusTag() {
 
 export default function Portfolio({ modelReady }) {
   const [riftTriggered, setRiftTriggered] = useState(false);
+  const aboutRef = useRef(null);
+  const dragonFly2Fired = useRef(false);
+  const dragonSceneDone = useRef(false);
+  const experiencePassed = useRef(false);
 
   useEffect(() => {
     const onTrigger = () => setRiftTriggered(true);
     window.addEventListener('riftTrigger', onTrigger);
     return () => window.removeEventListener('riftTrigger', onTrigger);
+  }, []);
+
+  // Track when DragonScene animation finishes
+  useEffect(() => {
+    const onDone = () => { dragonSceneDone.current = true; };
+    window.addEventListener('dragonSceneDone', onDone);
+    return () => window.removeEventListener('dragonSceneDone', onDone);
+  }, []);
+
+  // Fire DragonFly_2 once BOTH conditions are met: dragon scene done + scrolled past Experience
+  useEffect(() => {
+    const el = aboutRef.current;
+    if (!el) return;
+
+    function tryFire() {
+      if (dragonFly2Fired.current) return;
+      if (!dragonSceneDone.current || !experiencePassed.current) return;
+      dragonFly2Fired.current = true;
+      window.startDragonFly2?.();
+    }
+
+    const onScroll = () => {
+      if (!experiencePassed.current) {
+        const bottom = el.getBoundingClientRect().bottom;
+        if (bottom < 0) experiencePassed.current = true;
+      }
+      tryFire();
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('dragonSceneDone', tryFire);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('dragonSceneDone', tryFire);
+    };
   }, []);
 
   return (
@@ -196,7 +235,9 @@ export default function Portfolio({ modelReady }) {
         {/* Opaque cover so portfolio sections scroll over the rift cleanly */}
         <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15 }}>
           <SectionDivider variant="purple" />
-          <About />
+          <div ref={aboutRef}>
+            <About />
+          </div>
           <SectionDivider variant="pink" />
           <Experience />
           <SectionDivider variant="purple" />

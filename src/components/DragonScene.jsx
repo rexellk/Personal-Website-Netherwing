@@ -45,16 +45,28 @@ export default function DragonScene() {
     composer.addPass(bloomPass);
     // -----------------------------------
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambient);
+    // Hemisphere: purple sky above, near-black void below — gives the model a purple cast
+    // without flattening it like a white ambient would
+    // Hemisphere: purple sky above, near-black void below — gives the model a purple cast
+    // without flattening it like a white ambient would
+    // Hemisphere: purple sky above, near-black void below
+    const hemiLight = new THREE.HemisphereLight(0x9922cc, 0x1a0033, 0.4);
+    scene.add(hemiLight);
 
-    const dirLight = new THREE.DirectionalLight(0xbb88ff, 3);
-    dirLight.position.set(2, 4, 3);
+    // Key light — neutral-white base so the model's own colors show, with a purple tint
+    const dirLight = new THREE.DirectionalLight(0xddbbff, 2.5);
+    dirLight.position.set(3, 6, 4);
     scene.add(dirLight);
 
-    const rimLight = new THREE.DirectionalLight(0x4400ff, 2);
-    rimLight.position.set(-3, 0, -2);
+    // Rim light — deep blue-violet from behind/left
+    const rimLight = new THREE.DirectionalLight(0x3300cc, 2.0);
+    rimLight.position.set(-4, 1, -3);
     scene.add(rimLight);
+
+    // Under-fill — subtle bounce so the belly isn't black
+    const fillLight = new THREE.DirectionalLight(0x330044, 1.0);
+    fillLight.position.set(0, -5, 2);
+    scene.add(fillLight);
 
     // ==========================================
     // --- DEEP SPACE GALAXY SETUP ---
@@ -358,6 +370,7 @@ export default function DragonScene() {
           onComplete: () => {
             camera.position.set(0, 0, 5);
             window.shakeOffset = { x: 0, y: 0 };
+            window.dispatchEvent(new CustomEvent('dragonSceneDone'));
           },
         },
         2.0,

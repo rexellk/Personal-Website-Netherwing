@@ -6,6 +6,8 @@ import RiftCanvas from './components/RiftCanvas'
 import ClawScene from './components/ClawScene'
 import RiftParticles from './components/RiftParticles'
 import Portfolio from './web_components/Portfolio'
+import DragonFly from './components/DragonFly'
+import DragonFly_2 from './components/DragonFly_2'
 
 const ANIMATION_MS = 5000
 const FLASH_DURATION = 550
@@ -41,6 +43,20 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    window.addEventListener('dragonRoarReady', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setTimeout(() => setModelReady(true), 600)
+    }, { once: true })
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('dragonFly2Ready', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setTimeout(() => setModelReady(true), 600)
+    }, { once: true })
+  }, [])
+
+  useEffect(() => {
     function onWheel(e) {
       if (!modelReady || triggered.current || e.deltaY <= 0) return
       e.preventDefault()
@@ -50,6 +66,8 @@ export default function App() {
       setAnimating(true)
       window.dispatchEvent(new CustomEvent('riftTrigger'))
       window.startDragonAnimation?.()
+      
+      window.startDragonRoar?.()
 
       if (audioCtxRef.current && audioBufferRef.current) {
         const ctx = audioCtxRef.current
@@ -79,11 +97,13 @@ export default function App() {
           // Freeze rift at fully-open dragonTime before hiding dragon
           window.riftFrozenTime = window.primaryDragonAction?.time ?? 5.0
           if (window.hideDragon) window.hideDragon()
+          if (window.hideDragonRoar) window.hideDragonRoar()
           window.dispatchEvent(new CustomEvent('riftFlashDone'))
           document.body.style.overflow = ''
         }, FLASH_DURATION * 0.08)
 
         setTimeout(() => setFlashing(false), FLASH_DURATION)
+        document.body.style.overflow = ''
       }, ANIMATION_MS)
     }
 
@@ -93,6 +113,8 @@ export default function App() {
 
   return (
     <main style={{ background: '#000' }}>
+      {/* <DragonFly/> */}
+      <DragonFly_2/>
       <RiftCanvas />
       <VignetteOverlay />
       <DragonScene />
