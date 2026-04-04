@@ -40,13 +40,13 @@ const projects = [
 ];
 
 const S = {
-  section: { padding: "60px 80px 100px", position: "relative", zIndex: 10 },
+  section: { padding: "60px 80px 40px", position: "relative", zIndex: 10 },
   label: { fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--pv-text-dim)", marginBottom: 10, fontFamily: "'Jost', sans-serif" },
-  title: { fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: "clamp(36px, 5vw, 58px)", color: "#fff", lineHeight: 1 },
+  title: { fontFamily: "'Xirod', serif", fontWeight: 0, fontSize: "clamp(36px, 1vw, 20px)", color: "#fff", lineHeight: 1 },
   titleEm: { fontStyle: "italic", fontWeight: 300, color: "var(--pv-lavender)" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, marginTop: 60, maxWidth: 1100, margin: "60px auto 0" },
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, marginTop: 30, maxWidth: 1100, margin: "30px auto 0" },
   num: { fontFamily: "'Cormorant Garamond', serif", fontSize: 13, color: "rgba(199,125,255,0.35)", letterSpacing: "0.12em", marginBottom: 16 },
-  name: { fontFamily: "'Cormorant Garamond', serif", fontSize: 28, fontWeight: 600, color: "#fff", lineHeight: 1.1, marginBottom: 12 },
+  name: { fontFamily: "'Jost', sans-serif", fontSize: 22, fontWeight: 500, color: "#fff", lineHeight: 1.1, marginBottom: 12 },
   desc: { fontSize: 13, lineHeight: 1.8, color: "var(--pv-text-mid)", marginBottom: 20, fontFamily: "'Jost', sans-serif", fontWeight: 300 },
   metrics: { display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 20 },
   metric: { fontSize: 11, color: "var(--pv-blue)", letterSpacing: "0.06em", fontFamily: "'Jost', sans-serif" },

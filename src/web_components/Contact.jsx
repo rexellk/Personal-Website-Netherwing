@@ -1,15 +1,15 @@
 import Reveal from "./Reveal";
 
 const S = {
-  section: { padding: "60px 80px 140px", textAlign: "center", position: "relative", zIndex: 10 },
+  section: { padding: "60px 80px 60px", textAlign: "center", position: "relative", zIndex: 10 },
   inner: { maxWidth: 640, margin: "0 auto" },
   dividerLine: { flex: 1, height: 1, background: "linear-gradient(90deg, transparent, rgba(199,125,255,0.12), transparent)" },
   bigTitle: {
-    fontFamily: "'Cormorant Garamond', serif", fontWeight: 700,
-    fontSize: "clamp(48px, 8vw, 96px)", color: "#fff", lineHeight: 0.9,
+    fontFamily: "'Xirod', serif", fontWeight: 0,
+    fontSize: "clamp(48px, 5vw, 50px)", color: "#fff", lineHeight: 1.0,
     margin: "48px 0 32px",
   },
-  bigEm: { fontStyle: "italic", fontWeight: 300, color: "var(--pv-lavender)" },
+  bigEm: { fontStyle: "italic", fontWeight: 0, color: "var(--pv-lavender)" },
   sub: { fontSize: 14, color: "var(--pv-text-mid)", lineHeight: 1.8, marginBottom: 48, fontFamily: "'Jost', sans-serif", fontWeight: 300 },
   links: { display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "center" },
   footer: {
@@ -18,7 +18,7 @@ const S = {
     display: "flex", justifyContent: "space-between", alignItems: "center",
     position: "relative", zIndex: 10,
   },
-  footerName: { fontFamily: "'Cormorant Garamond', serif", fontSize: 18, fontWeight: 300, fontStyle: "italic", color: "rgba(199,125,255,0.4)" },
+  footerName: { fontFamily: "'Jost', sans-serif", fontSize: 13, fontWeight: 300, color: "rgba(199,125,255,0.4)", textTransform: "uppercase", letterSpacing: "0.18em" },
   footerCopy: { fontSize: 11, letterSpacing: "0.12em", color: "var(--pv-text-dim)", fontFamily: "'Jost', sans-serif" },
 };
 
@@ -38,7 +38,7 @@ export default function Contact() {
 
           <div style={S.bigTitle}>
             Let&apos;s<br />
-            <em style={S.bigEm}>build.</em>
+            <em style={S.bigEm}>build</em>
           </div>
 
           <p style={S.sub}>

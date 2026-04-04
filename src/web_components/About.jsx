@@ -11,20 +11,48 @@ const coreStack = ["C++", "Python", "TypeScript", "React", "Swift / SwiftUI", "K
 const tools = ["Node.js", "Supabase", "FastAPI", "Docker", "AWS / GCP", "GraphQL", "PyTorch", "Three.js"];
 
 const S = {
-  section: { padding: "100px 80px", position: "relative", zIndex: 10 },
-  header: { maxWidth: 900, margin: "0 auto 0 0" },
-  label: { fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--pv-text-dim)", marginBottom: 10, fontFamily: "'Jost', sans-serif" },
-  title: { fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: "clamp(36px, 5vw, 58px)", color: "#fff", lineHeight: 1 },
-  titleEm: { fontStyle: "italic", fontWeight: 300, color: "var(--pv-lavender)" },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "start", marginTop: 60 },
-  bodyText: { fontSize: 16, lineHeight: 1.9, color: "var(--pv-text-mid)", fontFamily: "'Jost', sans-serif", fontWeight: 300 },
-  statGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
-  statNum: { fontFamily: "'Cormorant Garamond', serif", fontSize: 42, fontWeight: 700, color: "#fff", lineHeight: 1 },
-  statSup: { fontSize: 24, color: "var(--pv-lavender)" },
-  statLabel: { fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--pv-text-dim)", marginTop: 6, fontFamily: "'Jost', sans-serif" },
-  skillsWrap: { marginTop: 64 },
-  groupLabel: { fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "var(--pv-text-dim)", marginTop: 28, marginBottom: 8, fontFamily: "'Jost', sans-serif" },
-  skillRow: { display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8 },
+  section: {
+    padding: "100px 80px", position: "relative", zIndex: 10
+  },
+  header: {
+    maxWidth: 900, margin: "0 auto 0 0"
+  },
+  label: {
+    fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--pv-text-dim)", marginBottom: 10, fontFamily: "'Jost', sans-serif"
+  },
+  title: { 
+    fontFamily: "'Xirod', serif", fontWeight: 0, fontSize: "clamp(36px, 1vw, 20px)", color: "#fff", lineHeight: 1 
+  },
+  titleEm: {
+     fontStyle: "italic", fontWeight: 300, color: "var(--pv-lavender)" 
+  },
+  grid: { 
+    display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "start", marginTop: 30
+  },
+  bodyText: {
+    fontSize: 16, lineHeight: 1.9, color: "var(--pv-text-mid)", fontFamily: "'Jost', sans-serif", fontWeight: 100 
+  },
+  statGrid: {
+    display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16
+  },
+  statNum: {
+    fontFamily: "'Jost', serif", fontSize: 42, fontWeight: 300, color: "#fff", lineHeight: 1
+  },
+  statSup: {
+    fontSize: 24, color: "var(--pv-lavender)"
+  },
+  statLabel: {
+    fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--pv-text-dim)", marginTop: 6, fontFamily: "'Jost', sans-serif"
+  },
+  skillsWrap: {
+    marginTop: 64
+  },
+  groupLabel: {
+    fontSize: 10, letterSpacing: "0.24em", textTransform: "uppercase", color: "var(--pv-text-dim)", marginTop: 28, marginBottom: 8, fontFamily: "'Jost', sans-serif"
+  },
+  skillRow: {
+    display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8
+  },
 };
 
 export default function About() {
@@ -33,8 +61,8 @@ export default function About() {
       <Reveal style={S.header}>
         <p style={S.label}>About me</p>
         <h2 style={S.title}>
-          Engineer who understands<br />
-          <em style={S.titleEm}>why businesses work</em>
+          Engineer with<br />
+          <em style={S.titleEm}>business instinct</em>
         </h2>
       </Reveal>
 

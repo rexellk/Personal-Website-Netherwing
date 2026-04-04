@@ -2,12 +2,11 @@ import Reveal from "./Reveal";
 
 const experiences = [
   {
-    company: "Amazon — eero",
+    company: "Amazon Eero",
     role: "SDE Intern · iOS",
     period: "May – Aug 2026 · San Francisco",
     desc: "Joining the eero iOS team in SOMA. Building features for the home networking app used by millions. Swift, TCA architecture, SwiftUI. Deep-diving into consumer iOS product at scale.",
     tags: ["Swift", "SwiftUI", "TCA", "iOS"],
-    badge: { label: "May 2026", style: { background: "rgba(255,152,0,0.08)", border: "1px solid rgba(255,152,0,0.25)", color: "rgba(255,152,0,0.8)" } },
   },
   {
     company: "Desai Accelerator",
@@ -30,11 +29,11 @@ const experiences = [
 const S = {
   section: { padding: "60px 80px 100px", position: "relative", zIndex: 10 },
   label: { fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: "var(--pv-text-dim)", marginBottom: 10, fontFamily: "'Jost', sans-serif" },
-  title: { fontFamily: "'Cormorant Garamond', serif", fontWeight: 600, fontSize: "clamp(36px, 5vw, 58px)", color: "#fff", lineHeight: 1 },
+  title: { fontFamily: "'Xirod', serif", fontWeight: 0, fontSize: "clamp(36px, 1vw, 20px)", color: "#fff", lineHeight: 1 },
   titleEm: { fontStyle: "italic", fontWeight: 300, color: "var(--pv-lavender)" },
-  list: { maxWidth: 900, margin: "60px auto 0", display: "flex", flexDirection: "column", gap: 16 },
+  list: { maxWidth: 900, margin: "30px auto 0", display: "flex", flexDirection: "column", gap: 16 },
   badge: { fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", padding: "5px 14px", borderRadius: 100, fontFamily: "'Jost', sans-serif" },
-  company: { fontFamily: "'Cormorant Garamond', serif", fontSize: 26, fontWeight: 600, color: "#fff" },
+  company: { fontFamily: "'Jost', sans-serif", fontSize: 22, fontWeight: 500, color: "#fff" },
   roleText: { fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--pv-purple-light)", margin: "6px 0 14px", fontFamily: "'Jost', sans-serif" },
   period: { fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--pv-text-dim)", paddingTop: 6, fontFamily: "'Jost', sans-serif", whiteSpace: "nowrap" },
   desc: { fontSize: 14, lineHeight: 1.8, color: "var(--pv-text-mid)", fontFamily: "'Jost', sans-serif", fontWeight: 300 },

@@ -260,7 +260,7 @@ export default function Portfolio({ modelReady }) {
         <Hero riftTriggered={riftTriggered} modelReady={modelReady} />
 
         {/* Opaque cover so portfolio sections scroll over the rift cleanly */}
-        <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15 }}>
+        <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15, overflowX: "hidden" }}>
           <SectionDivider variant="purple" />
           <div ref={aboutRef}>
             <About />
