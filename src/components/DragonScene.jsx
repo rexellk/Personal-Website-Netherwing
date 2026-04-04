@@ -13,9 +13,12 @@ const BUTTERFLY_COLORS = [
   new THREE.Color(3.5, 0.5, 6.0),  // deep violet
   new THREE.Color(0.5, 5.0, 5.5),  // cyan-teal
 ];
-const BUTTERFLY_BRIGHTNESS = 0.5;  // base color multiplier; instanceColor tints per-particle
+const BUTTERFLY_COUNT      = 40;   // number of butterflies in the swarm
+const BUTTERFLY_BRIGHTNESS = 0.1;  // base color multiplier; instanceColor tints per-particle
 const GLOW_SIZE_MULT       = 0.00; // glow disc size relative to sprite size
 const GLOW_BRIGHTNESS      = 0.00;  // glow disc color multiplier
+
+const BG_STAR_INTENSITY = 0.7; // 1.0 = Base
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DragonScene() {
@@ -93,7 +96,7 @@ export default function DragonScene() {
       starPos[i + 2] = -40 - Math.random() * 40;
 
       const isPurple = Math.random() > 0.6;
-      const intensity = 2.0 + Math.random() * 5.0;
+      const intensity = 2.0 + Math.random() * BG_STAR_INTENSITY;
 
       starColors[i]     = (isPurple ? 0.8 : 1.0) * intensity;
       starColors[i + 1] = (isPurple ? 0.2 : 1.0) * intensity;
@@ -116,7 +119,7 @@ export default function DragonScene() {
     // ==========================================
 
     // --- BUTTERFLY SWARM SETUP ---
-    const COUNT = 100; // Adjust for swarm density
+    const COUNT = BUTTERFLY_COUNT;
     const dummy = new THREE.Object3D();
     const butterflyData = [];
     let swarm;
@@ -124,7 +127,8 @@ export default function DragonScene() {
 
     // Load butterfly texture
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.load("/Butterfly_Sprite.png", (texture) => {
+    // IF NEEDED: FILL WITH SPRITE FOR OPENING RIFT PARTICLE
+    textureLoader.load("FILL THIS W SPRITE", (texture) => {
       // Optimization: Turn off mipmaps for small textures
       texture.minFilter = THREE.LinearFilter;
 
