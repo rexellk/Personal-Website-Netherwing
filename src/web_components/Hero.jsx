@@ -96,8 +96,8 @@ export default function Hero({ riftTriggered, modelReady }) {
         <a href="mailto:k.rexnath@gmail.com" className="pv-btn-ghost">Get In Touch</a>
       </div>
 
-      <div style={{ position: "absolute", bottom: 72, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, opacity: 0, animation: "pv-fadeIn 1s ease 2.2s forwards" }}>
-        <span style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: audioActivated ? "rgba(72,202,228,0.6)" : "rgba(199,125,255,0.35)", transition: "color 0.4s ease" }}>
+      <div style={{ position: "absolute", bottom: 150, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, opacity: 0, animation: "pv-fadeIn 1s ease 2.2s forwards" }}>
+        <span style={{ fontSize: 20, letterSpacing: "0.2em", textTransform: "uppercase", color: audioActivated ? "rgba(72,202,228,0.6)" : "rgba(199,125,255,0.35)", transition: "color 0.4s ease" }}>
           {audioActivated ? "Audio Activated" : "Click anywhere for audio"}
         </span>
       </div>

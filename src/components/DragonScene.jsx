@@ -61,22 +61,22 @@ export default function DragonScene() {
     // Hemisphere: purple sky above, near-black void below — gives the model a purple cast
     // without flattening it like a white ambient would
     // Hemisphere: purple sky above, near-black void below
-    const hemiLight = new THREE.HemisphereLight(0x9922cc, 0x1a0033, 0.4);
-    scene.add(hemiLight);
+    // Weak ambient so the shadow side isn't pure black
+    scene.add(new THREE.AmbientLight(0x110022, 0.8));
 
-    // Key light — neutral-white base so the model's own colors show, with a purple tint
-    const dirLight = new THREE.DirectionalLight(0xd1abf7, 2.5);
-    dirLight.position.set(3, 6, 4);
+    // Key light — strong, high-angle to create clear highlights and shadow depth
+    const dirLight = new THREE.DirectionalLight(0xfff0f8, 2.0);
+    dirLight.position.set(4, 8, 5);
     scene.add(dirLight);
 
-    // Rim light — deep blue-violet from behind/left
-    const rimLight = new THREE.DirectionalLight(0xcb9ef7, 1.0);
-    rimLight.position.set(-3, 1, -3);
+    // Rim light — cold blue-violet from behind to separate dragon from background
+    const rimLight = new THREE.DirectionalLight(0x4422ff, 2.0);
+    rimLight.position.set(-4, 2, -4);
     scene.add(rimLight);
 
-    // Under-fill — subtle bounce so the belly isn't black
-    const fillLight = new THREE.DirectionalLight(0x330044, 1.0);
-    fillLight.position.set(0, -5, 2);
+    // Under-fill — very dim purple bounce from below so belly has a hint of color
+    const fillLight = new THREE.DirectionalLight(0x6600cc, 0.4);
+    fillLight.position.set(0, -6, 2);
     scene.add(fillLight);
 
     // ==========================================
@@ -287,18 +287,17 @@ export default function DragonScene() {
       rightEyeMesh.add(rightLight);
       rightLight.position.set(0, 0, -0.05);
 
-      // --- NEW: Setup references for the Flash Animation ---
-      // We start everything at 0 so they burst out of the dark
-      leftLight.intensity = 0;
-      rightLight.intensity = 0;
+      // Resting eye glow — subtle before the flash, will spike during animation
+      const EYE_RESTING_INTENSITY = 10.0;
+      const EYE_RESTING_OPACITY   = 1.0;
+      leftLight.intensity  = EYE_RESTING_INTENSITY;
+      rightLight.intensity = EYE_RESTING_INTENSITY;
+      eyeMat.opacity = EYE_RESTING_OPACITY;
 
-      // Update eyeMat to start at 0 opacity
-      eyeMat.opacity = 0;
-
-      // Create a convenience object to animate everything together
+      // glowElements starts at resting values so flash animates FROM here
       const glowElements = {
-        intensity: 0,
-        opacity: 0,
+        intensity: EYE_RESTING_INTENSITY,
+        opacity:   EYE_RESTING_OPACITY,
       };
       // -------------------------------------------------
 
@@ -367,8 +366,8 @@ export default function DragonScene() {
         .to(flareMat, { opacity: 0, duration: 1.0, ease: "power2.out" }, ">")
         // 3. THE SETTLE (starts at same time as flare fade)
         .to(glowElements, {
-          intensity: 3,
-          opacity: 0.7,
+          intensity: EYE_RESTING_INTENSITY,
+          opacity: EYE_RESTING_OPACITY,
           duration: 2.5,
           ease: "power2.out",
           onUpdate: () => {
