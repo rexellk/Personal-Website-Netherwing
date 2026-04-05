@@ -1,4 +1,5 @@
 import React from "react";
+import { HERO } from "../data/portfolioData";
 
 const BotanicLeft = () => (
   <svg
@@ -70,23 +71,21 @@ export default function Hero({ riftTriggered, modelReady }) {
             pointerEvents: "none",
           }}
         />
-        <span className="pv-name-first">Rexell</span>
-        <span className="pv-name-last">Kurniawan</span>
+        <span className="pv-name-first">{HERO.firstName}</span>
+        <span className="pv-name-last">{HERO.lastName}</span>
       </div>
 
       <div className="pv-role-line">
         <span style={{ fontSize: 12, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(199,125,255,0.72)" }}>
-          Software Engineer &nbsp;&middot;&nbsp; Builder &nbsp;&middot;&nbsp; U of Michigan
+          {HERO.tagline}
         </span>
       </div>
 
-      <p className="pv-sub-text">
-        Ann Arbor, Michigan &nbsp;&bull;&nbsp; San Francisco &rarr; May 2026
-      </p>
+      <p className="pv-sub-text">{HERO.sub}</p>
 
       <div className="pv-cta-row">
-        <a href="https://drive.google.com/file/d/10dNoRvINeiCV5MuUxld_YrD9HZ1axYkH/view?usp=sharing" className="pv-btn-primary" target="_blank" rel="noreferrer">View Resume</a>
-        <a href="mailto:k.rexnath@gmail.com" className="pv-btn-ghost">Email</a>
+        <a href={HERO.resumeUrl} className="pv-btn-primary" target="_blank" rel="noreferrer">View Resume</a>
+        <a href={`mailto:${HERO.email}`} className="pv-btn-ghost">Email</a>
       </div>
 
 <div className="pv-scroll-hint">
