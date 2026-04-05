@@ -134,6 +134,7 @@ function Socials() {
 
 function StatusTag({ muted, setMuted }) {
   const [hintVisible, setHintVisible] = useState(true);
+  const [btnHovered, setBtnHovered] = useState(false);
 
   useEffect(() => {
     const onDone = () => setHintVisible(false);
@@ -181,19 +182,25 @@ function StatusTag({ muted, setMuted }) {
 
         <button
           onClick={() => setMuted(m => !m)}
+          onMouseEnter={() => setBtnHovered(true)}
+          onMouseLeave={() => setBtnHovered(false)}
           style={{
-            background: "rgba(10,0,20,0.7)", border: "1px solid rgba(199,125,255,0.3)",
+            background: btnHovered ? "rgba(30,0,50,0.85)" : "rgba(10,0,20,0.7)",
+            border: `1px solid ${btnHovered ? "rgba(199,125,255,0.7)" : "rgba(199,125,255,0.3)"}`,
             borderRadius: "50%", width: 36, height: 36,
             display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", color: "rgba(199,125,255,0.8)",
-            backdropFilter: "blur(8px)", transition: "border-color 0.2s, color 0.2s",
+            cursor: "pointer",
+            backdropFilter: "blur(8px)",
+            boxShadow: btnHovered ? "0 0 14px rgba(199,125,255,0.35)" : "none",
+            transform: btnHovered ? "scale(1.1)" : "scale(1)",
+            transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s",
             padding: 0, flexShrink: 0,
           }}
           title={muted ? "Unmute" : "Mute"}
         >
           {muted
-            ? <VolumeX size={16} color="rgba(199,125,255,0.8)" strokeWidth={1.5} />
-            : <Volume2 size={16} color="rgba(199,125,255,0.8)" strokeWidth={1.5} />
+            ? <VolumeX size={16} color={btnHovered ? "rgba(224,170,255,1)" : "rgba(199,125,255,0.8)"} strokeWidth={1.5} />
+            : <Volume2 size={16} color={btnHovered ? "rgba(224,170,255,1)" : "rgba(199,125,255,0.8)"} strokeWidth={1.5} />
           }
         </button>
       </div>

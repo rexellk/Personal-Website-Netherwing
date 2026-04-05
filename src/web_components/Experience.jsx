@@ -55,9 +55,9 @@ export default function Experience() {
       </div>
 
       <div style={S.list}>
-        {EXPERIENCES.map((exp, i) => (
-          <Reveal key={exp.company} delay={i * 0.1 + 0.1}>
-            <div className="pv-exp-item">
+        {EXPERIENCES.map((exp, i) => {
+          const inner = (
+            <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 20 }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
                   <CompanyIcon logo={exp.logo} initials={exp.initials} color={exp.iconColor} glow={exp.iconGlow} />
@@ -74,9 +74,25 @@ export default function Experience() {
                   <span key={t} style={S.tag}>{t}</span>
                 ))}
               </div>
-            </div>
-          </Reveal>
-        ))}
+            </>
+          );
+
+          return (
+            <Reveal key={exp.company} delay={i * 0.1 + 0.1}>
+              {exp.link ? (
+                <a
+                  href={exp.link} target="_blank" rel="noreferrer"
+                  className="pv-exp-item"
+                  style={{ display: "block", textDecoration: "none", cursor: "pointer" }}
+                >
+                  {inner}
+                </a>
+              ) : (
+                <div className="pv-exp-item">{inner}</div>
+              )}
+            </Reveal>
+          );
+        })}
       </div>
     </section>
   );

@@ -146,19 +146,56 @@ function ProjectCard({ project, index, spanFull }) {
     );
   }
 
+  const cardStyle = spanFull ? { maxWidth: "50%", margin: "0 auto", width: "100%" } : {};
+  const cardContent = (
+    <>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={S.num}>{num}</div>
+        {project.link && (
+          <ExternalLink
+            size={13}
+            strokeWidth={1.6}
+            style={{
+              color: "rgba(199,125,255,0.4)",
+              transform: hovered ? "translate(2px, -2px)" : "translate(0,0)",
+              transition: "transform 0.3s cubic-bezier(0.22,1,0.36,1), color 0.3s",
+              ...(hovered ? { color: "rgba(199,125,255,0.85)" } : {}),
+            }}
+          />
+        )}
+      </div>
+      <div style={{
+        ...S.name,
+        color: hovered && project.link ? "var(--pv-lavender)" : "#fff",
+        transition: "color 0.3s ease",
+      }}>{project.name}</div>
+      <div style={S.desc}>{project.desc}</div>
+      <div style={S.metrics}>
+        {project.metrics.map((m) => <span key={m} style={S.metric}>+{m}</span>)}
+      </div>
+      <div style={S.stack}>
+        {project.stack.map((t) => <span key={t} style={S.stackTag}>{t}</span>)}
+      </div>
+    </>
+  );
+
   return (
     <Reveal delay={index * 0.1 + 0.1} style={spanFull ? { gridColumn: "1 / -1" } : {}}>
-      <div className="pv-project-card" style={spanFull ? { maxWidth: "50%", margin: "0 auto", width: "100%" } : {}}>
-        <div style={S.num}>{num}</div>
-        <div style={S.name}>{project.name}</div>
-        <div style={S.desc}>{project.desc}</div>
-        <div style={S.metrics}>
-          {project.metrics.map((m) => <span key={m} style={S.metric}>+{m}</span>)}
+      {project.link ? (
+        <a
+          href={project.link} target="_blank" rel="noreferrer"
+          className="pv-project-card"
+          style={{ ...cardStyle, display: "block", textDecoration: "none", cursor: "pointer" }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+        >
+          {cardContent}
+        </a>
+      ) : (
+        <div className="pv-project-card no-hover" style={cardStyle}>
+          {cardContent}
         </div>
-        <div style={S.stack}>
-          {project.stack.map((t) => <span key={t} style={S.stackTag}>{t}</span>)}
-        </div>
-      </div>
+      )}
     </Reveal>
   );
 }

@@ -191,22 +191,11 @@
   border: 1px solid var(--pv-border);
   color: var(--pv-text-mid);
   background: rgba(255, 255, 255, 0.025);
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
   cursor: default;
-}
-.pv-skill-tag:hover {
-  color: var(--pv-lavender);
-  border-color: rgba(199, 125, 255, 0.4);
-  background: rgba(157, 78, 221, 0.1);
 }
 .pv-skill-tag.accent {
   border-color: rgba(72, 202, 228, 0.25);
   color: rgba(72, 202, 228, 0.7);
-}
-.pv-skill-tag.accent:hover {
-  border-color: rgba(72, 202, 228, 0.55);
-  color: var(--pv-blue);
-  background: rgba(72, 202, 228, 0.08);
 }
 
 /* Cards */
@@ -216,11 +205,6 @@
   border-radius: 16px;
   background: var(--pv-surface-light);
   backdrop-filter: blur(12px);
-  transition: border-color 0.25s, background 0.25s;
-}
-.pv-stat-card:hover {
-  border-color: var(--pv-border-hover);
-  background: rgba(255, 255, 255, 0.06);
 }
 .pv-exp-item {
   position: relative;
@@ -253,6 +237,12 @@
   background: rgba(255, 255, 255, 0.05);
   transform: translateY(-4px);
 }
+.pv-project-card.no-hover:hover {
+  border-color: var(--pv-border);
+  background: var(--pv-surface-light);
+  transform: none;
+}
+.pv-project-card.no-hover::before { display: none; }
 .pv-project-card::before {
   content: '';
   position: absolute;
@@ -297,10 +287,14 @@
   text-transform: uppercase;
   color: var(--pv-text-dim);
   text-decoration: none;
-  cursor: default;
+  cursor: pointer;
   background: none;
   border: none;
   font-family: 'Jost', sans-serif;
+  transition: color 0.2s;
+}
+.pv-nav-link:hover {
+  color: var(--pv-lavender);
 }
 
 /* Social link */
