@@ -1,5 +1,6 @@
 import './App.css'
 import { useState, useEffect, useRef } from 'react'
+import LoadingScreen from './components/LoadingScreen'
 import DragonScene from './components/DragonScene'
 import VignetteOverlay from './components/VignetteOverlay'
 import RiftCanvas from './components/RiftCanvas'
@@ -17,6 +18,7 @@ const CROSSFADE_OVERLAP   = 5.0   // seconds before intro ends to start ambient
 const SCROLL_FADE_RANGE   = 2000  // scrollY (px) at which ambient is fully silent
 
 export default function App() {
+  const [booting, setBooting] = useState(true)
   const [animating, setAnimating] = useState(false)
   const [flashing, setFlashing] = useState(false)
   const [modelReady, setModelReady] = useState(false)
@@ -181,6 +183,7 @@ export default function App() {
 
   return (
     <main style={{ background: '#000' }}>
+      {booting && <LoadingScreen onComplete={() => setBooting(false)} />}
       <DragonFly/>
       <DragonFly_2/>
       <RiftCanvas />

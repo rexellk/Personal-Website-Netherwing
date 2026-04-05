@@ -132,6 +132,14 @@ function Socials() {
 }
 
 function StatusTag({ muted, setMuted }) {
+  const [hintVisible, setHintVisible] = useState(true);
+
+  useEffect(() => {
+    const onDone = () => setHintVisible(false);
+    window.addEventListener('riftTrigger', onDone, { once: true });
+    return () => window.removeEventListener('riftTrigger', onDone);
+  }, []);
+
   return (
     <div
       style={{
@@ -140,23 +148,54 @@ function StatusTag({ muted, setMuted }) {
         opacity: 0, animation: "pv-fadeIn 1s ease 2s forwards",
       }}
     >
-      <button
-        onClick={() => setMuted(m => !m)}
-        style={{
-          background: "rgba(10,0,20,0.7)", border: "1px solid rgba(199,125,255,0.3)",
-          borderRadius: "50%", width: 36, height: 36,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", color: "rgba(199,125,255,0.8)",
-          backdropFilter: "blur(8px)", transition: "border-color 0.2s, color 0.2s",
-          padding: 0,
-        }}
-        title={muted ? "Unmute" : "Mute"}
-      >
-        {muted
-          ? <VolumeX size={16} color="rgba(199,125,255,0.8)" strokeWidth={1.5} />
-          : <Volume2 size={16} color="rgba(199,125,255,0.8)" strokeWidth={1.5} />
-        }
-      </button>
+      {/* Hint label + curved arrow pointing right toward the button */}
+      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-end", width: "100%" }}>
+        <div style={{
+          position: "absolute", right: 46, top: "50%", transform: "translateY(-80%)",
+          display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2,
+          pointerEvents: "none",
+          opacity: hintVisible ? 1 : 0,
+          transition: "opacity 0.8s ease",
+        }}>
+          <span style={{
+            fontFamily: "'Jost', sans-serif", fontSize: 8, letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "rgba(199,125,255,0.28)",
+            whiteSpace: "nowrap", textAlign: "right",
+          }}>
+            press for immersive
+          </span>
+          <span style={{
+            fontFamily: "'Jost', sans-serif", fontSize: 8, letterSpacing: "0.12em",
+            textTransform: "uppercase", color: "rgba(199,125,255,0.28)",
+            whiteSpace: "nowrap", textAlign: "right",
+          }}>
+            experience
+          </span>
+          {/* Curved arrow SVG pointing right */}
+          <svg width="28" height="18" viewBox="0 0 28 18" fill="none" style={{ marginTop: 2, alignSelf: "flex-end" }}>
+            <path d="M2 14 Q10 2 22 8" stroke="rgba(199,125,255,0.28)" strokeWidth="1" fill="none" strokeLinecap="round" />
+            <polyline points="19,5 22,8 18,10" stroke="rgba(199,125,255,0.28)" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+
+        <button
+          onClick={() => setMuted(m => !m)}
+          style={{
+            background: "rgba(10,0,20,0.7)", border: "1px solid rgba(199,125,255,0.3)",
+            borderRadius: "50%", width: 36, height: 36,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "pointer", color: "rgba(199,125,255,0.8)",
+            backdropFilter: "blur(8px)", transition: "border-color 0.2s, color 0.2s",
+            padding: 0, flexShrink: 0,
+          }}
+          title={muted ? "Unmute" : "Mute"}
+        >
+          {muted
+            ? <VolumeX size={16} color="rgba(199,125,255,0.8)" strokeWidth={1.5} />
+            : <Volume2 size={16} color="rgba(199,125,255,0.8)" strokeWidth={1.5} />
+          }
+        </button>
+      </div>
       <div className="pv-status-dot" />
       <div
         style={{
