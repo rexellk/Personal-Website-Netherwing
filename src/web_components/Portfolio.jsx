@@ -83,12 +83,20 @@ function ScrollVine() {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    let rafId = null;
     const onScroll = () => {
-      const p = window.scrollY / (document.body.scrollHeight - window.innerHeight);
-      setProgress(Math.min(1, p));
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        const p = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+        setProgress(Math.min(1, p));
+        rafId = null;
+      });
     };
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   return (

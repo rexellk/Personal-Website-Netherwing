@@ -1,6 +1,17 @@
 import Reveal from "./Reveal";
 import { ABOUT } from "../data/portfolioData";
 
+// Renders a string with <strong>text</strong> tags safely as JSX — no dangerouslySetInnerHTML
+function RichText({ text }) {
+  const parts = text.split(/(<strong>.*?<\/strong>)/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^<strong>(.*?)<\/strong>$/);
+    return match
+      ? <strong key={i} style={{ color: "var(--pv-lavender)", fontWeight: 400 }}>{match[1]}</strong>
+      : part;
+  });
+}
+
 const S = {
   section:   { padding: "100px 80px", position: "relative", zIndex: 10 },
   header:    { maxWidth: 900, margin: "0 auto 0 0" },
@@ -34,11 +45,9 @@ export default function About() {
         <Reveal delay={0.1}>
           <div style={S.bodyText}>
             {ABOUT.paragraphs.map((p, i) => (
-              <p
-                key={i}
-                style={{ marginTop: i === 0 ? 0 : 20 }}
-                dangerouslySetInnerHTML={{ __html: p.replace(/<strong>/g, '<strong style="color:var(--pv-lavender);font-weight:400">') }}
-              />
+              <p key={i} style={{ marginTop: i === 0 ? 0 : 20 }}>
+                <RichText text={p} />
+              </p>
             ))}
           </div>
         </Reveal>
