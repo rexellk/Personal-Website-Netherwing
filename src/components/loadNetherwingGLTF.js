@@ -12,7 +12,7 @@ export function loadNetherwingGLTF() {
   if (!cachedPromise) {
     cachedPromise = new Promise((resolve, reject) => {
       new GLTFLoader().load(
-        "/netherwing_pollux.glb",
+        `${import.meta.env.BASE_URL}netherwing_pollux.glb`,
         resolve,
         undefined,
         reject,

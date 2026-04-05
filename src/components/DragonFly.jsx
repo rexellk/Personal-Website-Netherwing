@@ -124,7 +124,7 @@ export default function DragonFly() {
 
     // Swap texture in as soon as it loads — no visual stall
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.load("/Butterfly_Sprite.png", (texture) => {
+    textureLoader.load(`${import.meta.env.BASE_URL}Butterfly_Sprite.png`, (texture) => {
       texture.minFilter = THREE.LinearFilter;
       trailMat.map = texture;
       trailMat.needsUpdate = true;
@@ -242,7 +242,7 @@ export default function DragonFly() {
         .to(dragon.position, { x: FLY_END_X, duration: FLY_DURATION, ease: "none" }, 0)
         .to(camera.position, { z: 3.5, duration: 1.0, ease: "power2.inOut" }, 0);
 
-      const flyAudio = new Audio("/DragonFly1.mp3");
+      const flyAudio = new Audio(`${import.meta.env.BASE_URL}DragonFly1.mp3`);
       flyAudio.volume = 0.5
 
       let flyHasRun = false;

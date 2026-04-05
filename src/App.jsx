@@ -45,13 +45,13 @@ export default function App() {
     const ctx = new AudioContext()
     audioCtxRef.current = ctx
 
-    fetch('/Netherwing-Intro-2.mp3')
+    fetch(`${import.meta.env.BASE_URL}Netherwing-Intro-2.mp3`)
       .then(r => r.arrayBuffer())
       .then(arr => ctx.decodeAudioData(arr))
       .then(buf => { audioBufferRef.current = buf })
       .catch(err => console.error('audio load error:', err))
 
-    fetch('/NetherRealm-Ambient.wav')
+    fetch(`${import.meta.env.BASE_URL}NetherRealm-Ambient.wav`)
       .then(r => r.arrayBuffer())
       .then(arr => ctx.decodeAudioData(arr))
       .then(buf => { ambientBufferRef.current = buf })
