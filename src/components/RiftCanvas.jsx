@@ -19,6 +19,7 @@ uniform float uHalfOpen;
 uniform float uAspect;
 uniform float uBurstGlow;
 uniform float uRiftScale;
+uniform float uScrollOffset;
 uniform vec2  uShake;
 
 float hash(vec2 p) {
@@ -52,6 +53,7 @@ vec2 rotUV(vec2 uv, float a) {
 void main() {
   vec2 uv  = vUv + uShake;
   vec2 ruv = rotUV(uv, uAngle);
+  ruv.y += uScrollOffset;
   vec2 raUv = vec2(ruv.x * uAspect, ruv.y);
 
   // Sine-wave tear spine (same freq as original)
@@ -152,8 +154,9 @@ export default function RiftCanvas() {
       uHalfOpen:  { value: 0 },
       uAspect:    { value: W / H },
       uBurstGlow:  { value: 0 },
-      uRiftScale:  { value: 1.0 }, // ← < 1.0 = narrower opening, > 1.0 = wider
-      uShake:      { value: new THREE.Vector2(0, 0) },
+      uRiftScale:    { value: 1.0 }, // ← < 1.0 = narrower opening, > 1.0 = wider
+      uScrollOffset: { value: 0.0 },
+      uShake:        { value: new THREE.Vector2(0, 0) },
     };
 
     const material = new THREE.ShaderMaterial({
@@ -219,6 +222,13 @@ export default function RiftCanvas() {
         (window.shakeOffset?.x || 0) * 0.008,
         (window.shakeOffset?.y || 0) * 0.008,
       );
+
+      // Scroll parallax — shift rift UV upward as user scrolls down,
+      // giving the illusion of descending into the rift.
+      // Range: 0 → window.innerHeight feels like the full "entry" journey.
+      const scrollFrac = Math.min(1, window.scrollY / window.innerHeight);
+      uniforms.uScrollOffset.value = scrollFrac * 0.55;
+      uniforms.uRiftScale.value    = 1.0 + scrollFrac * 0.6;
 
       renderer.render(scene, camera);
     }

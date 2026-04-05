@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 const LINES = [
   <>INIT <span style={{ color: '#4fc3f7' }}>SYSTEM_BOOT</span> ...</>,
   <>LOADING <span style={{ color: '#4fc3f7' }}>KERNEL</span> ...</>,
-  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>MOUNTING <span style={{ color: '#ab47bc' }}>NETHERWING</span><img src="/Netherwing_Logo.PNG" alt="" style={{ height: '1.4em', filter: 'drop-shadow(0 0 6px rgba(171,71,188,0.9)) drop-shadow(0 0 14px rgba(171,71,188,0.5))' }} />[OK]</span>,
+  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>CONJURING <span style={{ color: '#ab47bc' }}>NETHERWING</span><img src="/Netherwing_Logo.PNG" alt="" style={{ height: '1.4em', filter: 'drop-shadow(0 0 6px rgba(171,71,188,0.9)) drop-shadow(0 0 14px rgba(171,71,188,0.5))' }} />[OK]</span>,
   <>ESTABLISHING <span style={{ color: '#4fc3f7' }}>CONNECTION</span> ...</>,
   <>WELCOME, <span style={{ color: '#4fc3f7' }}>GUEST</span>.</>,
   <>&gt; ACCESS GRANTED <span className="ls-cursor" /></>,
