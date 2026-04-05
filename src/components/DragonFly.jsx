@@ -11,11 +11,12 @@ const ANIM_SPEED   = 0.5;   // animation playback speed (1.0 = normal)
 const FLY_START_X  = -10;    // world X where dragon enters
 const FLY_END_X    =  8;    // world X where dragon exits
 const FLY_Y        = 0.0;   // starting vertical position
-const FLY_DURATION = 2.0;   // seconds to cross the screen
+const FLY_DURATION = 1.5;   // seconds to cross the screen
 const DIVE_Y_SPEED = 2.0;   // world units per second downward drift
 const DIVE_Y_MAX   = 10.0;  // max total downward shift
 const BANK_SPEED   = 1.3;   // radians per second Z rotation (banking turn)
 const BANK_OFFSET  = -0.4;  // starting Z rotation offset in radians
+const CANVAS_OPACITY   = 0.90; // 0.0 = invisible, 1.0 = fully opaque
 
 // ── Trail tuning ──────────────────────────────────────────────────────────────
 const TRAIL_COUNT      = 500;   // max simultaneous trail particles
@@ -61,6 +62,7 @@ export default function DragonFly() {
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
+    renderer.domElement.style.opacity = String(CANVAS_OPACITY);
     renderer.domElement.style.background = "transparent";
 
     const scene  = new THREE.Scene();

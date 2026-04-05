@@ -20,15 +20,17 @@ export default function App() {
   const [animating, setAnimating] = useState(false)
   const [flashing, setFlashing] = useState(false)
   const [modelReady, setModelReady] = useState(false)
+  const [muted, setMuted] = useState(true)
   const triggered = useRef(false)
-  const audioUnlocked = useRef(false)
+  const masterGainRef = useRef(null)
 
-  // Track whether the user clicked before scrolling
+  // Sync mute state to all audio
   useEffect(() => {
-    const onPointer = () => { audioUnlocked.current = true }
-    window.addEventListener('pointerdown', onPointer, { once: true })
-    return () => window.removeEventListener('pointerdown', onPointer)
-  }, [])
+    window.audioMuted = muted
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.value = muted ? 0 : 1
+    }
+  }, [muted])
 
   // Create AudioContext + fetch buffer immediately on mount
   // resume() inside the wheel handler — wheel is a trusted gesture
@@ -101,12 +103,17 @@ export default function App() {
       window.startDragonAnimation?.()
       
 
-      if (!audioUnlocked.current) {
-        window.audioMuted = true
-      }
-
-      if (!window.audioMuted && audioCtxRef.current && audioBufferRef.current) {
+      if (audioCtxRef.current && audioBufferRef.current) {
         const ctx = audioCtxRef.current
+
+        // Create master gain once and store it for mute control
+        if (!masterGainRef.current) {
+          const master = ctx.createGain()
+          master.gain.value = window.audioMuted ? 0 : 1
+          master.connect(ctx.destination)
+          masterGainRef.current = master
+        }
+
         const AUDIO_DELAY_MS = 700
         const play = () => {
           const src = ctx.createBufferSource()
@@ -114,7 +121,7 @@ export default function App() {
           const gain = ctx.createGain()
           gain.gain.value = 0.4  // ← 0.0 = silent, 1.0 = full volume
           src.connect(gain)
-          gain.connect(ctx.destination)
+          gain.connect(masterGainRef.current)
           const startAt = ctx.currentTime + AUDIO_DELAY_MS / 1000
           src.start(startAt)
 
@@ -132,7 +139,7 @@ export default function App() {
             const ambientGain = ctx.createGain()
             ambientGain.gain.setValueAtTime(0, crossfadeAt)
             ambientGain.gain.linearRampToValueAtTime(AMBIENT_MAX_VOLUME, crossfadeAt + CROSSFADE_DURATION)
-            ambientGain.connect(ctx.destination)
+            ambientGain.connect(masterGainRef.current)
             ambientGainRef.current = ambientGain
 
             const ambient = ctx.createBufferSource()
@@ -182,7 +189,7 @@ export default function App() {
       {animating && <ClawScene />}
       {animating && <RiftParticles />}
 
-      <Portfolio modelReady={modelReady} />
+      <Portfolio modelReady={modelReady} muted={muted} setMuted={setMuted} />
 
       {flashing && (
         <div

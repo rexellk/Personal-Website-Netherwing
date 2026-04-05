@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Volume2, VolumeX } from "lucide-react";
 import "./portfolio.css";
 
 import ButterflyCanvas from "./ButterflyCanvas";
@@ -130,7 +131,7 @@ function Socials() {
   );
 }
 
-function StatusTag() {
+function StatusTag({ muted, setMuted }) {
   return (
     <div
       style={{
@@ -139,6 +140,23 @@ function StatusTag() {
         opacity: 0, animation: "pv-fadeIn 1s ease 2s forwards",
       }}
     >
+      <button
+        onClick={() => setMuted(m => !m)}
+        style={{
+          background: "rgba(10,0,20,0.7)", border: "1px solid rgba(199,125,255,0.3)",
+          borderRadius: "50%", width: 36, height: 36,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", color: "rgba(199,125,255,0.8)",
+          backdropFilter: "blur(8px)", transition: "border-color 0.2s, color 0.2s",
+          padding: 0,
+        }}
+        title={muted ? "Unmute" : "Mute"}
+      >
+        {muted
+          ? <VolumeX size={16} color="rgba(199,125,255,0.8)" strokeWidth={1.5} />
+          : <Volume2 size={16} color="rgba(199,125,255,0.8)" strokeWidth={1.5} />
+        }
+      </button>
       <div className="pv-status-dot" />
       <div
         style={{
@@ -157,7 +175,7 @@ function StatusTag() {
   );
 }
 
-export default function Portfolio({ modelReady }) {
+export default function Portfolio({ modelReady, muted, setMuted }) {
   const [riftTriggered, setRiftTriggered] = useState(false);
   const aboutRef = useRef(null);
   const contactRef = useRef(null);
@@ -165,7 +183,7 @@ export default function Portfolio({ modelReady }) {
   const dragonSceneDone = useRef(false);
   const experiencePassed = useRef(false);
   const dragonFlyFired = useRef(false);
-  const DRAGONFLY_TRIGGER = 1.5; // 0.0 = top of screen, 1.0 = bottom of screen, >1.0 = below viewport
+  const DRAGONFLY_TRIGGER = 1.0; // 0.0 = top of screen, 1.0 = bottom of screen, >1.0 = below viewport
 
   useEffect(() => {
     const onTrigger = () => setRiftTriggered(true);
@@ -253,7 +271,7 @@ export default function Portfolio({ modelReady }) {
 
       <PortfolioNav />
       <Socials />
-      <StatusTag />
+      <StatusTag muted={muted} setMuted={setMuted} />
 
       <main>
         {/* Hero is transparent — rift canvas shows through as its background */}

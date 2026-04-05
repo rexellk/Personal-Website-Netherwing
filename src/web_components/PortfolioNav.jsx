@@ -11,6 +11,13 @@ const SECTIONS = [
 export default function PortfolioNav() {
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState("hero");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const onDone = () => setReady(true);
+    window.addEventListener('dragonSceneDone', onDone, { once: true });
+    return () => window.removeEventListener('dragonSceneDone', onDone);
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -39,12 +46,16 @@ export default function PortfolioNav() {
     return () => observers.forEach((o) => o.disconnect());
   }, []);
 
+  if (!ready) return null;
+
   return (
     <nav
       style={{
         position: "fixed",
         top: 0, left: 0, right: 0,
         zIndex: 200,
+        opacity: 0,
+        animation: "pv-fadeIn 0.8s ease forwards",
         display: "flex",
         justifyContent: "center",
         padding: scrolled ? "16px 48px" : "24px 48px",
@@ -66,17 +77,18 @@ export default function PortfolioNav() {
           transition: "background 0.3s, border-color 0.3s",
         }}
       >
-        {SECTIONS.map((link, i) => {
+        {SECTIONS.map((link) => {
           const isActive = active === link.id;
           return (
             <div key={link.id} style={{ display: "flex", alignItems: "center", gap: 40 }}>
-              {/* Nav item — no scroll on click */}
               <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <span
                   className="pv-nav-link"
+                  onClick={() => document.getElementById(link.id)?.scrollIntoView({ behavior: "smooth" })}
                   style={{
                     color: isActive ? "var(--pv-lavender)" : undefined,
                     transition: "color 0.3s",
+                    cursor: "pointer",
                   }}
                 >
                   {link.label}
@@ -97,17 +109,6 @@ export default function PortfolioNav() {
                 />
               </div>
 
-              {/* Separator dot */}
-              {i < SECTIONS.length - 1 && (
-                <div
-                  style={{
-                    width: 3, height: 3,
-                    borderRadius: "50%",
-                    background: "rgba(199,125,255,0.25)",
-                    marginLeft: -40,
-                  }}
-                />
-              )}
             </div>
           );
         })}

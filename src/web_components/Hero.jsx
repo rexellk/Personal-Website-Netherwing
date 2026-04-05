@@ -30,13 +30,6 @@ const BotanicRight = () => (
 
 export default function Hero({ riftTriggered, modelReady }) {
   const [visible, setVisible] = React.useState(true);
-  const [audioActivated, setAudioActivated] = React.useState(false);
-
-  React.useEffect(() => {
-    const onPointer = () => setAudioActivated(true);
-    window.addEventListener('pointerdown', onPointer, { once: true });
-    return () => window.removeEventListener('pointerdown', onPointer);
-  }, []);
 
   React.useEffect(() => {
     if (riftTriggered) setVisible(false);
@@ -96,13 +89,7 @@ export default function Hero({ riftTriggered, modelReady }) {
         <a href="mailto:k.rexnath@gmail.com" className="pv-btn-ghost">Email</a>
       </div>
 
-      <div style={{ position: "absolute", bottom: 150, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, opacity: 0, animation: "pv-fadeIn 1s ease 2.2s forwards" }}>
-        <span style={{ fontSize: 20, letterSpacing: "0.2em", textTransform: "uppercase", color: audioActivated ? "rgba(72,202,228,0.6)" : "rgba(199,125,255,0.35)", transition: "color 0.4s ease" }}>
-          {audioActivated ? "Audio Activated" : "Click anywhere for audio"}
-        </span>
-      </div>
-
-      <div className="pv-scroll-hint">
+<div className="pv-scroll-hint">
         {modelReady
           ? <div className="pv-scroll-line" />
           : <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(199,125,255,0.4)", animation: "pv-fadeIn 0.5s ease forwards" }}>Animation Loading…</div>

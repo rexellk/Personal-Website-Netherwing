@@ -26,14 +26,17 @@ const S = {
   titleEm: {
      fontStyle: "italic", fontWeight: 300, color: "var(--pv-lavender)" 
   },
-  grid: { 
-    display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "start", marginTop: 30
+  grid: {
+    display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "stretch", marginTop: 30
   },
   bodyText: {
-    fontSize: 16, lineHeight: 1.9, color: "var(--pv-text-mid)", fontFamily: "'Jost', sans-serif", fontWeight: 100 
+    fontSize: 18, lineHeight: 1.9, color: "var(--pv-white)", fontFamily: "'Jost', sans-serif", fontWeight: 300 
   },
   statGrid: {
-    display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16
+    display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "stretch", height: "100%"
+  },
+  statCard: {
+    display: "flex", flexDirection: "column", justifyContent: "center"
   },
   statNum: {
     fontFamily: "'Jost', serif", fontSize: 42, fontWeight: 300, color: "#fff", lineHeight: 1
@@ -89,7 +92,7 @@ export default function About() {
         <Reveal delay={0.2}>
           <div style={S.statGrid}>
             {stats.map((s) => (
-              <div key={s.label} className="pv-stat-card">
+              <div key={s.label} className="pv-stat-card" style={S.statCard}>
                 <div style={S.statNum}>
                   {s.num}
                   {s.sup && <span style={S.statSup}>{s.sup}</span>}
