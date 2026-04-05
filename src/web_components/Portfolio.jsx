@@ -10,6 +10,7 @@ import About from "./About";
 import Experience from "./Experience";
 import Projects from "./Projects";
 import Contact from "./Contact";
+import TronDecor from "./TronDecor";
 
 function Cursor() {
   const cursorRef = useRef(null);
@@ -318,6 +319,7 @@ export default function Portfolio({ modelReady, muted, setMuted }) {
 
         {/* Opaque cover so portfolio sections scroll over the rift cleanly */}
         <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15, overflowX: "hidden" }}>
+          <TronDecor />
           <SectionDivider variant="purple" />
           <div ref={aboutRef}>
             <About />

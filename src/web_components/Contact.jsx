@@ -10,7 +10,7 @@ const S = {
     margin: "48px 0 32px",
   },
   bigEm: { fontStyle: "italic", fontWeight: 0, color: "var(--pv-lavender)" },
-  sub: { fontSize: 14, color: "var(--pv-text-mid)", lineHeight: 1.8, marginBottom: 48, fontFamily: "'Jost', sans-serif", fontWeight: 300 },
+  sub: { fontSize: 18, color: "var(--pv-white)", lineHeight: 1.8, marginBottom: 48, fontFamily: "'Jost', sans-serif", fontWeight: 300 },
   links: { display: "flex", flexWrap: "wrap", gap: 14, justifyContent: "center" },
   footer: {
     borderTop: "1px solid var(--pv-border)",
