@@ -378,10 +378,10 @@ export default function DragonScene() {
           }, "<");
 
         setTimeout(() => {
-          console.log("1s - z:", dragon.position.z, "progress:", tl.progress())
+          console.log("1s - z:", dragon.position.z, "progress:", tl.progress(), "riftTime:", riftAction.time, "timeScale:", riftAction.timeScale)
         }, 1000)
         setTimeout(() => {
-          console.log("3s - z:", dragon.position.z, "progress:", tl.progress())
+          console.log("3s - z:", dragon.position.z, "progress:", tl.progress(), "riftTime:", riftAction.time, "timeScale:", riftAction.timeScale)
         }, 3000)
       };
 
