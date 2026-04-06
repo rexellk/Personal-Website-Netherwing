@@ -3,9 +3,9 @@ import * as THREE from "three";
 import { Timer } from "three";
 import { loadNetherwingGLTF } from "./loadNetherwingGLTF";
 import gsap from "gsap";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+// import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+// import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+// import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
 // ── Butterfly tuning ──────────────────────────────────────────────────────────
 const BUTTERFLY_COLORS = [
@@ -44,18 +44,12 @@ export default function DragonScene() {
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
     camera.position.set(0, 0, 5);
 
-    // --- POST-PROCESSING PIPELINE ---
-    const renderScene = new RenderPass(scene, camera);
-    const composer = new EffectComposer(renderer);
-    composer.addPass(renderScene);
-
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(W, H),
-      3.0,
-      0.5,
-      0.95,
-    );
-    composer.addPass(bloomPass);
+    // --- POST-PROCESSING PIPELINE (disabled — EffectComposer corrupts WebGL context in prod) ---
+    // const renderScene = new RenderPass(scene, camera);
+    // const composer = new EffectComposer(renderer);
+    // composer.addPass(renderScene);
+    // const bloomPass = new UnrealBloomPass(new THREE.Vector2(W, H), 3.0, 0.5, 0.95);
+    // composer.addPass(bloomPass);
     // -----------------------------------
 
     // Hemisphere: purple sky above, near-black void below — gives the model a purple cast
@@ -392,6 +386,13 @@ export default function DragonScene() {
         tl.play();
         eyeFlashTl.play();
         console.log("GSAP tl playing:", tl.isActive())
+
+        setTimeout(() => {
+          console.log("1s - z:", dragon.position.z, "progress:", tl.progress())
+        }, 1000)
+        setTimeout(() => {
+          console.log("3s - z:", dragon.position.z, "progress:", tl.progress())
+        }, 3000)
       };
 
       // Called at flash peak to hide dragon behind the white-out
@@ -468,7 +469,7 @@ export default function DragonScene() {
       // ----------------------
 
       // Use composer for post-processing (bloom)
-      composer.render();
+      renderer.render(scene, camera);
     }
     animate();
 
