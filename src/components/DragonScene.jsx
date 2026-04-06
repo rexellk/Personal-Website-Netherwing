@@ -286,7 +286,6 @@ export default function DragonScene() {
       // Hide dragon until animation starts
       dragon.visible = false;
 
-      gsap.ticker.lagSmoothing(0);
       const tl = gsap.timeline({ paused: true });
 
       tl.to(riftAction, {
