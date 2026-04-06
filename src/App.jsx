@@ -85,6 +85,8 @@ export default function App() {
       e.preventDefault()
       triggered.current = true
 
+      console.log("startDragonAnimation exists?", !!window.startDragonAnimation)
+
       document.body.style.overflow = 'hidden'
       setAnimating(true)
       window.dispatchEvent(new CustomEvent('riftTrigger'))
