@@ -191,8 +191,10 @@ export default function DragonScene() {
     });
     // -------------------------
 
+    let dragonRef = null;
     loadNetherwingGLTF().then((gltf) => {
       const dragon = gltf.scene;
+      dragonRef = dragon;
       dragon.scale.set(45, 45, 45);
       dragon.position.set(0, -7, -5);
       scene.add(dragon);
@@ -421,10 +423,15 @@ export default function DragonScene() {
 
       // Expose trigger — called by App.jsx on first scroll
       window.startDragonAnimation = () => {
+        console.log("🐉 startDragonAnimation called")
+        console.log("dragon visible before:", dragon.visible)
         dragon.visible = true;
+        console.log("dragon visible after:", dragon.visible)
         riftAction.paused = false;
+        console.log("riftAction paused:", riftAction.paused, "timeScale:", riftAction.timeScale)
         tl.play();
         eyeFlashTl.play();
+        console.log("GSAP tl playing:", tl.isActive())
       };
 
       // Called at flash peak to hide dragon behind the white-out
@@ -440,6 +447,7 @@ export default function DragonScene() {
     // const clock = new THREE.Clock()
     const timer = new Timer();
 
+    let logged = false;
     function animate() {
       requestAnimationFrame(animate);
 
@@ -448,6 +456,12 @@ export default function DragonScene() {
 
       if (mixerRef.current) {
         mixerRef.current.update(delta);
+      }
+
+      if (!logged && dragonRef) {
+        logged = true;
+        console.log("dragon in scene:", scene.children.includes(dragonRef))
+        console.log("dragon world pos:", dragonRef.getWorldPosition(new THREE.Vector3()))
       }
 
       // --- ANIMATE BUTTERFLY SWARM ---
