@@ -5,6 +5,7 @@ import { loadNetherwingGLTF } from "./loadNetherwingGLTF";
 import gsap from "gsap";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
 // ── Butterfly tuning ──────────────────────────────────────────────────────────
 const BUTTERFLY_COLORS = [
@@ -48,14 +49,13 @@ export default function DragonScene() {
     const composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
 
-    // UnrealBloomPass disabled for Netlify compatibility test
-    // const bloomPass = new UnrealBloomPass(
-    //   new THREE.Vector2(W, H),
-    //   3.0,
-    //   0.5,
-    //   0.95,
-    // );
-    // composer.addPass(bloomPass);
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(W, H),
+      3.0,
+      0.5,
+      0.95,
+    );
+    composer.addPass(bloomPass);
     // -----------------------------------
 
     // Hemisphere: purple sky above, near-black void below — gives the model a purple cast
@@ -124,71 +124,30 @@ export default function DragonScene() {
     let swarm;
     let glowMesh;
 
-    // Load butterfly texture
-    const textureLoader = new THREE.TextureLoader();
-    // IF NEEDED: FILL WITH SPRITE FOR OPENING RIFT PARTICLE
-    textureLoader.load("FILL THIS W SPRITE", (texture) => {
-      // Optimization: Turn off mipmaps for small textures
-      texture.minFilter = THREE.LinearFilter;
-
-      // Create material with texture
-      const wingMat = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 2.0,
-        color: new THREE.Color(BUTTERFLY_BRIGHTNESS, BUTTERFLY_BRIGHTNESS, BUTTERFLY_BRIGHTNESS), // instanceColor tints per-particle
-        side: THREE.DoubleSide,
-        blending: THREE.AdditiveBlending, // Magical glow effect
-        alphaTest: 1.0, // Show more of the texture
-      });
-
-      // Create the Geometry (Plane for texture)
-      const wingGeo = new THREE.PlaneGeometry(0.4, 0.4);
-
-      swarm = new THREE.InstancedMesh(wingGeo, wingMat, COUNT);
-      scene.add(swarm);
-
-      // Initialize Random Positions
-      for (let i = 0; i < COUNT; i++) {
-        butterflyData.push({
-          pos: new THREE.Vector3(
-            (Math.random() - 0.5) * 4, // Close to dragon's head region
-            -2 + (Math.random() - 0.5) * 4, // Around head height
-            -5 + (Math.random() - 0.5) * 3, // Around dragon's Z
-          ),
-          speed: 0.01 + Math.random() * 0.02,
-          offset: Math.random() * Math.PI * 2,
-          phase: Math.random() * Math.PI,
-          colorIdx: Math.floor(Math.random() * BUTTERFLY_COLORS.length),
-        });
-      }
-
-      // ── Glow disc mesh (radial gradient, rendered behind each butterfly) ───────
-      const glowCanvas = document.createElement("canvas");
-      glowCanvas.width = 128; glowCanvas.height = 128;
-      const glowCtx = glowCanvas.getContext("2d");
-      const glowGrad = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
-      glowGrad.addColorStop(0,    "rgba(255, 255, 255, 1.0)");
-      glowGrad.addColorStop(0.35, "rgba(229,  18, 71, 0.6)");
-      glowGrad.addColorStop(1,    "rgba(80,    0, 180, 0.0)");
-      glowCtx.fillStyle = glowGrad;
-      glowCtx.fillRect(0, 0, 128, 128);
-
-      const glowTex = new THREE.CanvasTexture(glowCanvas);
-      const glowMat = new THREE.MeshBasicMaterial({
-        map: glowTex,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        color: new THREE.Color(GLOW_BRIGHTNESS, GLOW_BRIGHTNESS, GLOW_BRIGHTNESS),
-      });
-      const glowSize = 0.4 * GLOW_SIZE_MULT;
-      const glowGeo  = new THREE.PlaneGeometry(glowSize, glowSize);
-      glowMesh = new THREE.InstancedMesh(glowGeo, glowMat, COUNT);
-      glowMesh.frustumCulled = false;
-      scene.add(glowMesh);
-      // ─────────────────────────────────────────────────────────────────────────
+    // Butterfly swarm — invisible placeholder until a real sprite is provided
+    const wingMat = new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
     });
+    const wingGeo = new THREE.PlaneGeometry(0.4, 0.4);
+    swarm = new THREE.InstancedMesh(wingGeo, wingMat, COUNT);
+    scene.add(swarm);
+
+    for (let i = 0; i < COUNT; i++) {
+      butterflyData.push({
+        pos: new THREE.Vector3(
+          (Math.random() - 0.5) * 4,
+          -2 + (Math.random() - 0.5) * 4,
+          -5 + (Math.random() - 0.5) * 3,
+        ),
+        speed: 0.01 + Math.random() * 0.02,
+        offset: Math.random() * Math.PI * 2,
+        phase: Math.random() * Math.PI,
+        colorIdx: Math.floor(Math.random() * BUTTERFLY_COLORS.length),
+      });
+    }
     // -------------------------
 
     let dragonRef = null;
@@ -433,8 +392,6 @@ export default function DragonScene() {
         tl.play();
         eyeFlashTl.play();
         console.log("GSAP tl playing:", tl.isActive())
-        // TEMP: force dragon into view to test if GSAP is the problem
-        dragon.position.set(0, 0, 2);
       };
 
       // Called at flash peak to hide dragon behind the white-out
@@ -511,7 +468,7 @@ export default function DragonScene() {
       // ----------------------
 
       // Use composer for post-processing (bloom)
-      renderer.render(scene, camera);
+      composer.render();
     }
     animate();
 
