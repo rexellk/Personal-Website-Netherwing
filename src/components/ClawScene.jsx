@@ -91,8 +91,9 @@ export default function ClawScene() {
 
     const timer = new Timer();
 
+    let rafId;
     function animate() {
-      requestAnimationFrame(animate);
+      rafId = requestAnimationFrame(animate);
 
       timer.update();
       const delta = timer.getDelta();
@@ -127,6 +128,7 @@ export default function ClawScene() {
     animate();
 
     return () => {
+      cancelAnimationFrame(rafId);
       if (el.contains(renderer.domElement)) {
         el.removeChild(renderer.domElement);
       }

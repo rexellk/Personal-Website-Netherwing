@@ -301,13 +301,13 @@ export default function DragonScene() {
         const tl = gsap.timeline();
 
         tl.to(riftAction, {
-          timeScale: 1.0,
+          timeScale: 2.15,
           duration: 0.5,
           delay: 0.8,
           ease: "power2.inOut",
         })
           .to(riftAction, {
-            timeScale: 0.1,
+            timeScale: 0.215,
             duration: 1.5,
             ease: "power1.out",
           });
@@ -398,9 +398,10 @@ export default function DragonScene() {
     // const clock = new THREE.Clock()
     const timer = new Timer();
 
+    let rafId;
     let logged = false;
     function animate() {
-      requestAnimationFrame(animate);
+      rafId = requestAnimationFrame(animate);
 
       timer.update();
       const delta = timer.getDelta();
@@ -464,6 +465,7 @@ export default function DragonScene() {
     animate();
 
     return () => {
+      cancelAnimationFrame(rafId);
       el.removeChild(renderer.domElement);
       renderer.dispose();
     };
