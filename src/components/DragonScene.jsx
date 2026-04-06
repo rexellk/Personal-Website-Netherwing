@@ -286,111 +286,96 @@ export default function DragonScene() {
       // Hide dragon until animation starts
       dragon.visible = false;
 
-      const tl = gsap.timeline({ paused: true });
-
-      tl.to(riftAction, {
-        timeScale: 1.0,
-        duration: 0.5,
-        delay: 0.8,
-        ease: "power2.inOut",
-      })
-        .to(riftAction, {
-          timeScale: 0.1,
-          duration: 1.5,
-          ease: "power1.out",
-        });
-
-      // Drift dragon toward camera — looms out of the rift
-      tl.to(dragon.position, {
-        z: 2.0,
-        duration: 6.0,
-        ease: "power4.in",
-      }, 0);
-
-      window.riftTimeOffset = 0.8 - 1.2;
-
-      const eyeFlashTl = gsap.timeline({ paused: true, delay: 3.0 });
-
-      eyeFlashTl
-        // 1. THE IMPACT FLASH (Instantly blindingly bright!)
-        .to(glowElements, {
-          intensity: 200,
-          opacity: 1.0,
-          duration: 0.05,
-          ease: "expo.out",
-          onUpdate: () => {
-            leftLight.intensity = glowElements.intensity;
-            rightLight.intensity = glowElements.intensity;
-            eyeMat.opacity = glowElements.opacity;
-          },
-        })
-        // Spike flare at the same time as the flash
-        .to(flareMat, { opacity: 1.0, duration: 0.05, ease: "expo.out" }, "<")
-        // 2. THE ANAMORPHIC FLARE FADE (starts right after flash ends)
-        .to(flareMat, { opacity: 0, duration: 1.0, ease: "power2.out" }, ">")
-        // 3. THE SETTLE (starts at same time as flare fade)
-        .to(glowElements, {
-          intensity: EYE_RESTING_INTENSITY,
-          opacity: EYE_RESTING_OPACITY,
-          duration: 2.5,
-          ease: "power2.out",
-          onUpdate: () => {
-            leftLight.intensity = glowElements.intensity;
-            rightLight.intensity = glowElements.intensity;
-            eyeMat.opacity = glowElements.opacity;
-          },
-        }, "<");
-      // --------------------------------------------------
-
-      // 4. Camera Shake
-      // Expose shake globally for all scenes
       window.shakeOffset = { x: 0, y: 0 };
-
-      tl.to(
-        camera.position,
-        {
-          duration: 2.5,
-          x: "+=0.0",
-          y: "+=0.0",
-          modifiers: {
-            x: (_) => {
-              const time = tl.progress();
-              const decay = Math.pow(1 - time, 2.0); // slower decay
-              const shakeX = (Math.random() - 0.5) * 0.6 * decay;
-              window.shakeOffset.x = shakeX;
-              return 0 + shakeX;
-            },
-            y: (_) => {
-              const time = tl.progress();
-              const decay = Math.pow(1 - time, 1.5);
-              const shakeY = (Math.random() - 0.5) * 0.6 * decay;
-              window.shakeOffset.y = shakeY;
-              return 0 + shakeY;
-            },
-          },
-          ease: "power2.out",
-          onComplete: () => {
-            camera.position.set(0, 0, 5);
-            window.shakeOffset = { x: 0, y: 0 };
-            window.dispatchEvent(new CustomEvent('dragonSceneDone'));
-          },
-        },
-        2.0,
-      );
-
       mixerRef.current = mixer;
 
       // Expose trigger — called by App.jsx on first scroll
+      // Timelines created HERE so GSAP schedules them at trigger time,
+      // avoiding accumulated lag from the paused→play pattern on Netlify
       window.startDragonAnimation = () => {
         console.log("🐉 startDragonAnimation called")
-        console.log("dragon visible before:", dragon.visible)
         dragon.visible = true;
-        console.log("dragon visible after:", dragon.visible)
         riftAction.paused = false;
         console.log("riftAction paused:", riftAction.paused, "timeScale:", riftAction.timeScale)
-        tl.play();
-        eyeFlashTl.play();
-        console.log("GSAP tl playing:", tl.isActive())
+
+        const tl = gsap.timeline();
+
+        tl.to(riftAction, {
+          timeScale: 1.0,
+          duration: 0.5,
+          delay: 0.8,
+          ease: "power2.inOut",
+        })
+          .to(riftAction, {
+            timeScale: 0.1,
+            duration: 1.5,
+            ease: "power1.out",
+          });
+
+        tl.to(dragon.position, {
+          z: 2.0,
+          duration: 6.0,
+          ease: "power4.in",
+        }, 0);
+
+        tl.to(
+          camera.position,
+          {
+            duration: 2.5,
+            x: "+=0.0",
+            y: "+=0.0",
+            modifiers: {
+              x: () => {
+                const time = tl.progress();
+                const decay = Math.pow(1 - time, 2.0);
+                const shakeX = (Math.random() - 0.5) * 0.6 * decay;
+                window.shakeOffset.x = shakeX;
+                return 0 + shakeX;
+              },
+              y: () => {
+                const time = tl.progress();
+                const decay = Math.pow(1 - time, 1.5);
+                const shakeY = (Math.random() - 0.5) * 0.6 * decay;
+                window.shakeOffset.y = shakeY;
+                return 0 + shakeY;
+              },
+            },
+            ease: "power2.out",
+            onComplete: () => {
+              camera.position.set(0, 0, 5);
+              window.shakeOffset = { x: 0, y: 0 };
+              window.dispatchEvent(new CustomEvent('dragonSceneDone'));
+            },
+          },
+          2.0,
+        );
+
+        const eyeFlashTl = gsap.timeline({ delay: 3.0 });
+        eyeFlashTl
+          .to(glowElements, {
+            intensity: 200,
+            opacity: 1.0,
+            duration: 0.05,
+            ease: "expo.out",
+            onUpdate: () => {
+              leftLight.intensity = glowElements.intensity;
+              rightLight.intensity = glowElements.intensity;
+              eyeMat.opacity = glowElements.opacity;
+            },
+          })
+          .to(flareMat, { opacity: 1.0, duration: 0.05, ease: "expo.out" }, "<")
+          .to(flareMat, { opacity: 0, duration: 1.0, ease: "power2.out" }, ">")
+          .to(glowElements, {
+            intensity: EYE_RESTING_INTENSITY,
+            opacity: EYE_RESTING_OPACITY,
+            duration: 2.5,
+            ease: "power2.out",
+            onUpdate: () => {
+              leftLight.intensity = glowElements.intensity;
+              rightLight.intensity = glowElements.intensity;
+              eyeMat.opacity = glowElements.opacity;
+            },
+          }, "<");
 
         setTimeout(() => {
           console.log("1s - z:", dragon.position.z, "progress:", tl.progress())
