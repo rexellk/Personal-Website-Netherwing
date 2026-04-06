@@ -21,7 +21,11 @@ export function loadNetherwingGLTF() {
       gltfLoader.load(
         `${import.meta.env.BASE_URL}netherwing_pollux.glb`,
         resolve,
-        undefined,
+        (xhr) => {
+          window.dispatchEvent(new CustomEvent('glbProgress', {
+            detail: { loaded: xhr.loaded, total: xhr.total },
+          }));
+        },
         reject,
       );
     });

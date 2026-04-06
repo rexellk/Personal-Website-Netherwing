@@ -1,5 +1,9 @@
-import React from "react";
+import { useState, useEffect } from "react";
 import { HERO } from "../data/portfolioData";
+
+function fmtMB(bytes) {
+  return (bytes / 1048576).toFixed(1) + ' MB'
+}
 
 const BotanicLeft = () => (
   <svg
@@ -30,16 +34,23 @@ const BotanicRight = () => (
 );
 
 export default function Hero({ riftTriggered, modelReady }) {
-  const [visible, setVisible] = React.useState(true);
+  const [visible, setVisible] = useState(true);
+  const [glbProgress, setGlbProgress] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (riftTriggered) setVisible(false);
   }, [riftTriggered]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const onDone = () => setVisible(true);
     window.addEventListener('riftFlashDone', onDone);
     return () => window.removeEventListener('riftFlashDone', onDone);
+  }, []);
+
+  useEffect(() => {
+    const onProgress = (e) => setGlbProgress(e.detail);
+    window.addEventListener('glbProgress', onProgress);
+    return () => window.removeEventListener('glbProgress', onProgress);
   }, []);
 
   return (
@@ -91,7 +102,9 @@ export default function Hero({ riftTriggered, modelReady }) {
 <div className="pv-scroll-hint">
         {modelReady
           ? <div className="pv-scroll-line" />
-          : <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(199,125,255,0.4)", animation: "pv-fadeIn 0.5s ease forwards" }}>Animation Loading…</div>
+          : <div style={{ fontSize: 9, letterSpacing: "0.2em", textTransform: "uppercase", color: "rgba(199,125,255,0.4)", animation: "pv-fadeIn 0.5s ease forwards" }}>
+              Animation Loading: {glbProgress ? ` ${fmtMB(glbProgress.loaded)}${glbProgress.total ? ` / ${fmtMB(glbProgress.total)}` : ''}` : ''}
+            </div>
         }
       </div>
     </section>
