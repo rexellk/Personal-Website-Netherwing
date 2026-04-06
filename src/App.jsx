@@ -70,24 +70,10 @@ export default function App() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Wait for DragonScene to finish loading the GLB before allowing scroll trigger
+  // Only dragonReady (DragonScene GLB) gates the scroll trigger —
+  // dragonRoarReady/dragonFly2Ready fire independently and must not unblock scroll early
   useEffect(() => {
     window.addEventListener('dragonReady', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      // Short delay so scroll finishes before enabling the trigger
-      setTimeout(() => setModelReady(true), 600)
-    }, { once: true })
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener('dragonRoarReady', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      setTimeout(() => setModelReady(true), 600)
-    }, { once: true })
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener('dragonFly2Ready', () => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       setTimeout(() => setModelReady(true), 600)
     }, { once: true })
@@ -102,8 +88,6 @@ export default function App() {
       document.body.style.overflow = 'hidden'
       setAnimating(true)
       window.dispatchEvent(new CustomEvent('riftTrigger'))
-      window.startDragonAnimation?.()
-      
 
       if (audioCtxRef.current && audioBufferRef.current) {
         const ctx = audioCtxRef.current
@@ -159,22 +143,28 @@ export default function App() {
         }
       }
 
-      setTimeout(() => {
-        setAnimating(false)
-        setFlashing(true)
+      // Poll until DragonScene GLB is ready, then start animation + 5s timer together
+      const waitForDragon = setInterval(() => {
+        if (!window.startDragonAnimation) return
+        clearInterval(waitForDragon)
+        window.startDragonAnimation()
 
         setTimeout(() => {
-          // Freeze rift at fully-open dragonTime before hiding dragon
-          window.riftFrozenTime = window.primaryDragonAction?.time ?? 5.0
-          if (window.hideDragon) window.hideDragon()
-          if (window.hideDragonRoar) window.hideDragonRoar()
-          window.dispatchEvent(new CustomEvent('riftFlashDone'))
-          document.body.style.overflow = ''
-        }, FLASH_DURATION * 0.08)
+          setAnimating(false)
+          setFlashing(true)
 
-        setTimeout(() => setFlashing(false), FLASH_DURATION)
-        document.body.style.overflow = ''
-      }, ANIMATION_MS)
+          setTimeout(() => {
+            window.riftFrozenTime = window.primaryDragonAction?.time ?? 5.0
+            if (window.hideDragon) window.hideDragon()
+            if (window.hideDragonRoar) window.hideDragonRoar()
+            window.dispatchEvent(new CustomEvent('riftFlashDone'))
+            document.body.style.overflow = ''
+          }, FLASH_DURATION * 0.08)
+
+          setTimeout(() => setFlashing(false), FLASH_DURATION)
+          document.body.style.overflow = ''
+        }, ANIMATION_MS)
+      }, 50)
     }
 
     window.addEventListener('wheel', onWheel, { passive: false })
