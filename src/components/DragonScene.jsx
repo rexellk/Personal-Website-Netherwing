@@ -42,6 +42,9 @@ export default function DragonScene() {
     renderer.domElement.addEventListener('webglcontextlost', (e) => {
       console.error('❌ WebGL context LOST', e)
     })
+    console.log('canvas in DOM:', document.body.contains(renderer.domElement))
+    console.log('canvas size:', renderer.domElement.width, renderer.domElement.height)
+    console.log('canvas style:', renderer.domElement.style.cssText)
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
