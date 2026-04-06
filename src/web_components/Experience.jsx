@@ -36,7 +36,7 @@ const S = {
   company:  { fontFamily: "'Jost', sans-serif", fontSize: 22, fontWeight: 500, color: "#fff" },
   roleText: { fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--pv-purple-light)", margin: "6px 0 14px", fontFamily: "'Jost', sans-serif" },
   period:   { fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--pv-text-dim)", paddingTop: 6, fontFamily: "'Jost', sans-serif", whiteSpace: "nowrap" },
-  desc:     { fontSize: 14, lineHeight: 1.8, color: "var(--pv-text-mid)", fontFamily: "'Jost', sans-serif", fontWeight: 300 },
+  desc:     { fontSize: 16, lineHeight: 1.8, color: "var(--pv-text-mid)", fontFamily: "'Jost', sans-serif", fontWeight: 300 },
   tags:     { display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 },
   tag:      { fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", padding: "4px 12px", borderRadius: 100, border: "1px solid var(--pv-border)", color: "var(--pv-text-dim)", fontFamily: "'Jost', sans-serif" },
 };

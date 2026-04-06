@@ -76,7 +76,7 @@ export default function Hero({ riftTriggered, modelReady }) {
       </div>
 
       <div className="pv-role-line">
-        <span style={{ fontSize: 12, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(199,125,255,0.72)" }}>
+        <span style={{ fontSize: 16, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(199,125,255,0.72)" }}>
           {HERO.tagline}
         </span>
       </div>
