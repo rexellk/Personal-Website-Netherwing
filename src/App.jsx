@@ -81,7 +81,7 @@ export default function App() {
 
   useEffect(() => {
     function onWheel(e) {
-      if (!modelReady || booting || triggered.current || e.deltaY <= 0) return
+      if (!modelReady || triggered.current || e.deltaY <= 0) return
       e.preventDefault()
       triggered.current = true
 
@@ -169,7 +169,7 @@ export default function App() {
 
     window.addEventListener('wheel', onWheel, { passive: false })
     return () => window.removeEventListener('wheel', onWheel)
-  }, [modelReady, booting])
+  }, [modelReady])
 
   return (
     <main style={{ background: '#000' }}>

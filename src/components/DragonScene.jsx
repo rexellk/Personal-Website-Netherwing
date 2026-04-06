@@ -5,7 +5,6 @@ import { loadNetherwingGLTF } from "./loadNetherwingGLTF";
 import gsap from "gsap";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
 // ── Butterfly tuning ──────────────────────────────────────────────────────────
 const BUTTERFLY_COLORS = [
@@ -44,19 +43,19 @@ export default function DragonScene() {
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
     camera.position.set(0, 0, 5);
 
-    // --- NEW: POST-PROCESSING PIPELINE ---
+    // --- POST-PROCESSING PIPELINE ---
     const renderScene = new RenderPass(scene, camera);
     const composer = new EffectComposer(renderer);
     composer.addPass(renderScene);
 
-    // Parameters: resolution, strength, radius, threshold
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(W, H),
-      3.0, // Strength of the glow (tweak this!)
-      0.5, // Size/spread of the glow
-      0.95, // Threshold: ignore everything unless nearly pure white (eyes only!)
-    );
-    composer.addPass(bloomPass);
+    // UnrealBloomPass disabled for Netlify compatibility test
+    // const bloomPass = new UnrealBloomPass(
+    //   new THREE.Vector2(W, H),
+    //   3.0,
+    //   0.5,
+    //   0.95,
+    // );
+    // composer.addPass(bloomPass);
     // -----------------------------------
 
     // Hemisphere: purple sky above, near-black void below — gives the model a purple cast
@@ -493,7 +492,7 @@ export default function DragonScene() {
       // ----------------------
 
       // Use composer for post-processing (bloom)
-      composer.render();
+      renderer.render(scene, camera);
     }
     animate();
 
