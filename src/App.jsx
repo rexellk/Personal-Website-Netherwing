@@ -20,7 +20,7 @@ const SCROLL_FADE_RANGE   = 2000  // scrollY (px) at which ambient is fully sile
 export default function App() {
   const [booting, setBooting] = useState(true)
   const [animating, setAnimating] = useState(false)
-  const [flashing, _setFlashing] = useState(false)
+  const [flashing, setFlashing] = useState(false)
   const [modelReady, setModelReady] = useState(false)
   const [muted, setMuted] = useState(true)
   const triggered = useRef(false)
@@ -68,6 +68,11 @@ export default function App() {
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Lock scroll from page load — unlocked after flash completes
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
   }, [])
 
   // Only dragonReady (DragonScene GLB) gates the scroll trigger —
@@ -151,21 +156,21 @@ export default function App() {
         clearInterval(waitForDragon)
         window.startDragonAnimation()
 
-        // setTimeout(() => {
-        //   setAnimating(false)
-        //   setFlashing(true)
+        setTimeout(() => {
+          setAnimating(false)
+          setFlashing(true)
 
-        //   setTimeout(() => {
-        //     window.riftFrozenTime = window.primaryDragonAction?.time ?? 5.0
-        //     if (window.hideDragon) window.hideDragon()
-        //     if (window.hideDragonRoar) window.hideDragonRoar()
-        //     window.dispatchEvent(new CustomEvent('riftFlashDone'))
-        //     document.body.style.overflow = ''
-        //   }, FLASH_DURATION * 0.08)
+          setTimeout(() => {
+            window.riftFrozenTime = window.primaryDragonAction?.time ?? 5.0
+            if (window.hideDragon) window.hideDragon()
+            if (window.hideDragonRoar) window.hideDragonRoar()
+            window.dispatchEvent(new CustomEvent('riftFlashDone'))
+            document.body.style.overflow = ''
+          }, FLASH_DURATION * 0.08)
 
-        //   setTimeout(() => setFlashing(false), FLASH_DURATION)
-        //   document.body.style.overflow = ''
-        // }, ANIMATION_MS)
+          setTimeout(() => setFlashing(false), FLASH_DURATION)
+          document.body.style.overflow = ''
+        }, ANIMATION_MS)
       }, 50)
     }
 

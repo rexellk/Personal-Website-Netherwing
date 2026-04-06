@@ -3,9 +3,9 @@ import * as THREE from "three";
 import { Timer } from "three";
 import { loadNetherwingGLTF } from "./loadNetherwingGLTF";
 import gsap from "gsap";
-// import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-// import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-// import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
 // ── Butterfly tuning ──────────────────────────────────────────────────────────
 const BUTTERFLY_COLORS = [
@@ -39,30 +39,24 @@ export default function DragonScene() {
     renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
     renderer.domElement.style.background = "transparent";
-    renderer.domElement.addEventListener('webglcontextlost', (e) => {
-      console.error('❌ WebGL context LOST', e)
-    })
-    console.log('canvas in DOM:', document.body.contains(renderer.domElement))
-    console.log('canvas size:', renderer.domElement.width, renderer.domElement.height)
-    console.log('canvas style:', renderer.domElement.style.cssText)
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
     camera.position.set(0, 0, 5);
 
-    // --- POST-PROCESSING PIPELINE (disabled — EffectComposer corrupts WebGL context in prod) ---
-    // const renderScene = new RenderPass(scene, camera);
-    // const composer = new EffectComposer(renderer);
-    // composer.addPass(renderScene);
-    // const bloomPass = new UnrealBloomPass(new THREE.Vector2(W, H), 3.0, 0.5, 0.95);
-    // composer.addPass(bloomPass);
-    // -----------------------------------
+    // --- POST-PROCESSING PIPELINE ---
+    let composer = null;
+    try {
+      const renderScene = new RenderPass(scene, camera);
+      composer = new EffectComposer(renderer);
+      composer.addPass(renderScene);
+      const bloomPass = new UnrealBloomPass(new THREE.Vector2(W, H), 3.0, 0.5, 0.95);
+      composer.addPass(bloomPass);
+    } catch {
+      composer = null;
+    }
+    // --------------------------------
 
-    // Hemisphere: purple sky above, near-black void below — gives the model a purple cast
-    // without flattening it like a white ambient would
-    // Hemisphere: purple sky above, near-black void below — gives the model a purple cast
-    // without flattening it like a white ambient would
-    // Hemisphere: purple sky above, near-black void below
     // Weak ambient so the shadow side isn't pure black
     scene.add(new THREE.AmbientLight(0x110022, 0.8));
 
@@ -150,10 +144,8 @@ export default function DragonScene() {
     }
     // -------------------------
 
-    let dragonRef = null;
     loadNetherwingGLTF().then((gltf) => {
       const dragon = gltf.scene;
-      dragonRef = dragon;
       dragon.scale.set(45, 45, 45);
       dragon.position.set(0, -7, -5);
       scene.add(dragon);
@@ -183,12 +175,10 @@ export default function DragonScene() {
       // --- ANAMORPHIC FLARE SETUP (SMOOTH EDGES) ---
       // ==========================================
       const flareCanvas = document.createElement("canvas");
-      // 1. MAKE IT SQUARE: This guarantees the glow never hits the edge
       flareCanvas.width = 256;
       flareCanvas.height = 256;
       const ctx = flareCanvas.getContext("2d");
 
-      // 2. PERFECT CIRCLE: Center at 128, radius of 128
       const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
       gradient.addColorStop(0, "rgba(255, 255, 255, 1)");   // Solid white core
       gradient.addColorStop(0.1, "rgba(128, 128, 128, 1)"); // Grey middle
@@ -201,7 +191,6 @@ export default function DragonScene() {
 
       const flareMat = new THREE.SpriteMaterial({
         map: flareTexture,
-        // Match this to whatever pure color you are using for your eyes!
         color: new THREE.Color(0xcc33ff).multiplyScalar(5),
         blending: THREE.AdditiveBlending,
         transparent: true,
@@ -210,16 +199,13 @@ export default function DragonScene() {
         depthTest: false,
       });
 
-      // 3. STRETCH THE SQUARE INTO A BEAM
+      // Stretch the square into a beam
       const leftFlare = new THREE.Sprite(flareMat);
-      // Because the image is a square now, we increase X to stretch it out
-      leftFlare.scale.set(0.6, 0.05, 1); 
-      // Push it slightly toward the outer edge of the eye
-      leftFlare.position.x = 0.05; 
+      leftFlare.scale.set(0.6, 0.05, 1);
+      leftFlare.position.x = 0.05;
 
       const rightFlare = new THREE.Sprite(flareMat);
       rightFlare.scale.set(0.6, 0.05, 1);
-      // Push it slightly toward the outer edge of the eye
       rightFlare.position.x = -0.05;
 
       leftEyeMesh.add(leftFlare);
@@ -293,10 +279,8 @@ export default function DragonScene() {
       // Timelines created HERE so GSAP schedules them at trigger time,
       // avoiding accumulated lag from the paused→play pattern on Netlify
       window.startDragonAnimation = () => {
-        console.log("🐉 startDragonAnimation called")
         dragon.visible = true;
         riftAction.paused = false;
-        console.log("riftAction paused:", riftAction.paused, "timeScale:", riftAction.timeScale)
 
         const tl = gsap.timeline();
 
@@ -307,7 +291,7 @@ export default function DragonScene() {
           ease: "power2.inOut",
         })
           .to(riftAction, {
-            timeScale: 0.215,
+            timeScale: 0.22,
             duration: 1.5,
             ease: "power1.out",
           });
@@ -376,13 +360,6 @@ export default function DragonScene() {
               eyeMat.opacity = glowElements.opacity;
             },
           }, "<");
-
-        setTimeout(() => {
-          console.log("1s - z:", dragon.position.z, "progress:", tl.progress(), "riftTime:", riftAction.time, "timeScale:", riftAction.timeScale)
-        }, 1000)
-        setTimeout(() => {
-          console.log("3s - z:", dragon.position.z, "progress:", tl.progress(), "riftTime:", riftAction.time, "timeScale:", riftAction.timeScale)
-        }, 3000)
       };
 
       // Called at flash peak to hide dragon behind the white-out
@@ -395,11 +372,9 @@ export default function DragonScene() {
       window.dispatchEvent(new CustomEvent('dragonReady'));
     });
 
-    // const clock = new THREE.Clock()
     const timer = new Timer();
 
     let rafId;
-    let logged = false;
     function animate() {
       rafId = requestAnimationFrame(animate);
 
@@ -408,14 +383,6 @@ export default function DragonScene() {
 
       if (mixerRef.current) {
         mixerRef.current.update(delta);
-      }
-
-      if (!logged && dragonRef) {
-        logged = true;
-        const wp = new THREE.Vector3();
-        dragonRef.getWorldPosition(wp);
-        console.log("dragon in scene:", scene.children.includes(dragonRef))
-        console.log("dragon world pos:", wp.x, wp.y, wp.z)
       }
 
       // --- ANIMATE BUTTERFLY SWARM ---
@@ -459,8 +426,11 @@ export default function DragonScene() {
       }
       // ----------------------
 
-      // Use composer for post-processing (bloom)
-      renderer.render(scene, camera);
+      if (composer) {
+        composer.render();
+      } else {
+        renderer.render(scene, camera);
+      }
     }
     animate();
 
