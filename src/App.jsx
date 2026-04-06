@@ -51,7 +51,7 @@ export default function App() {
       .then(buf => { audioBufferRef.current = buf })
       .catch(err => console.error('audio load error:', err))
 
-    fetch(`${import.meta.env.BASE_URL}NetherRealm-Ambient.wav`)
+    fetch(`${import.meta.env.BASE_URL}NetherRealm-Ambient.mp3`)
       .then(r => r.arrayBuffer())
       .then(arr => ctx.decodeAudioData(arr))
       .then(buf => { ambientBufferRef.current = buf })

@@ -1,4 +1,5 @@
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 
 let cachedPromise = null;
@@ -10,8 +11,14 @@ let cachedPromise = null;
  */
 export function loadNetherwingGLTF() {
   if (!cachedPromise) {
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
+
+    const gltfLoader = new GLTFLoader();
+    gltfLoader.setDRACOLoader(dracoLoader);
+
     cachedPromise = new Promise((resolve, reject) => {
-      new GLTFLoader().load(
+      gltfLoader.load(
         `${import.meta.env.BASE_URL}netherwing_pollux.glb`,
         resolve,
         undefined,

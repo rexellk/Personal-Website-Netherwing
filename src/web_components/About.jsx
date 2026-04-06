@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Reveal from "./Reveal";
 import { ABOUT } from "../data/portfolioData";
-import michiganM from "../images/michigan-m.png";
+import michiganM from "../images/michigan-m.webp";
 
 // Renders a string with <strong>text</strong> tags safely as JSX — no dangerouslySetInnerHTML
 function RichText({ text }) {

@@ -7,13 +7,13 @@
 import amazonLogo  from "../images/amazon-logo.jpg";
 import desaiLogo   from "../images/desai-logo.jpeg";
 import permiasLogo from "../images/permias-logo.jpeg";
-import rexellPfp   from "../images/rexell-pfp.jpg";
+import rexellPfp   from "../images/rexell-pfp.webp";
 
-import permiasWebsite from "../images/permias-website.png"
-import revoWebsite from "../images/REVO-website.png"
-import stitchiWebsite from "../images/stitchi-website.png"
-import gsgedmWebsite from "../images/gsgedm-website.png"
-import santikalandWebsite from "../images/santikaland-website.png"
+import permiasWebsite     from "../images/permias-website.webp"
+import revoWebsite        from "../images/REVO-website.webp"
+import stitchiWebsite     from "../images/stitchi-website.webp"
+import gsgedmWebsite      from "../images/gsgedm-website.webp"
+import santikalandWebsite from "../images/santikaland-website.webp"
 
 
 // ─────────────────────────────────────────────

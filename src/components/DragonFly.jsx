@@ -124,7 +124,7 @@ export default function DragonFly() {
 
     // Swap texture in as soon as it loads — no visual stall
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.load(`${import.meta.env.BASE_URL}Butterfly_Sprite.png`, (texture) => {
+    textureLoader.load(`${import.meta.env.BASE_URL}Butterfly_Sprite.webp`, (texture) => {
       texture.minFilter = THREE.LinearFilter;
       trailMat.map = texture;
       trailMat.needsUpdate = true;
