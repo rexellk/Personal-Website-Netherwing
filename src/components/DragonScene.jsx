@@ -327,6 +327,7 @@ export default function DragonScene() {
       // Hide dragon until animation starts
       dragon.visible = false;
 
+      gsap.ticker.lagSmoothing(0);
       const tl = gsap.timeline({ paused: true });
 
       tl.to(riftAction, {
@@ -432,6 +433,8 @@ export default function DragonScene() {
         tl.play();
         eyeFlashTl.play();
         console.log("GSAP tl playing:", tl.isActive())
+        // TEMP: force dragon into view to test if GSAP is the problem
+        dragon.position.set(0, 0, 2);
       };
 
       // Called at flash peak to hide dragon behind the white-out
@@ -460,8 +463,10 @@ export default function DragonScene() {
 
       if (!logged && dragonRef) {
         logged = true;
+        const wp = new THREE.Vector3();
+        dragonRef.getWorldPosition(wp);
         console.log("dragon in scene:", scene.children.includes(dragonRef))
-        console.log("dragon world pos:", dragonRef.getWorldPosition(new THREE.Vector3()))
+        console.log("dragon world pos:", wp.x, wp.y, wp.z)
       }
 
       // --- ANIMATE BUTTERFLY SWARM ---
