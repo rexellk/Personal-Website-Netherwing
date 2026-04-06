@@ -42,14 +42,15 @@ export const ABOUT = {
   // Body paragraphs — each string is one <p>
   paragraphs: [
     `CS student at <strong>University of Michigan</strong> (Dec 2026),
-     incoming <strong>Amazon SDE intern</strong> on the eero iOS team in San Francisco.
-     I build things that ship, from production features at five early-stage startups
-     to a national website serving 8,000+ students.`,
-    `I moved from Indonesia to Seattle at 16 and found software as the intersection
-     of everything I love: systems thinking, building for real people, and the
-     compounding nature of good ideas.`,
-    `My edge is being equally comfortable in a founder conversation and a code review.
-     Startup speed, engineering craft, <strong>no separation between the two.</strong>`,
+    incoming <strong>Amazon SDE intern</strong> on the eero iOS team in San Francisco.
+    I build things that ship, production features for five early-stage startups,
+    a national website serving 8,000+ students.`,
+
+    `I moved from Indonesia to Seattle at 16 and found software at the intersection of everything I love: systems thinking, building for real people, and the compounding nature of good ideas. My edge is being equally comfortable in a founder conversation and a code review. Startup speed, engineering craft, <strong>no separation between the two.</strong>`,
+
+    `Outside the code: I cook, play piano, and think obsessively about chess.
+    Grew up in Indonesia, built myself in Seattle, now building software in Michigan.
+    The habit of starting from scratch carries across all three.`,
   ],
 
   // Stat bento boxes — add/remove freely (always 4 to fill the 2×2 grid)
@@ -81,7 +82,7 @@ export const EXPERIENCES = [
     initials:  "AE",
     iconColor: "#ff9900",
     iconGlow:  "rgba(255,153,0,0.35)",
-    link:      "https://amazon.com/eero", 
+    link:      "https://eero.com/", 
   },
   {
     company:   "Desai Accelerator",
@@ -170,7 +171,7 @@ export const PROJECTS = [
     featured: true,
     name:     "REVO",
     desc:     "Automotive marketplace startup co-founded by me, piloting in Ann Arbor. Built customer-facing onboarding, mechanic portal, and welcome flows.",
-    metrics:  ["Actively piloting"],
+    metrics:  ["100 Customers Interviewed", "5 Mechanics Onboarded", "2 Customers Serviced"],
     stack:    ["React Native", "REST API", "AWS", "Porkbun"],
     image:    revoWebsite,
     link:     "https://revo.us.com/", 
@@ -179,7 +180,7 @@ export const PROJECTS = [
     featured: true,
     name:     "Santika Land",
     desc:     "Contributed UX theming and branding direction for an Indonesian real-estate company, alongside analyzing Instagram lead data to surface audience insights.",
-    metrics:  ["20,000+ data points analyzed"],
+    metrics:  ["20,000 data points analyzed"],
     stack:    ["Figma", "Python", "Pandas", "Numpy"],
     image:    santikalandWebsite,
     link:     "https://santikaland.com/", 
@@ -210,7 +211,7 @@ export const PROJECTS = [
     featured: false,
     name:     "Monte Carlo Portfolio Simulator",
     desc:     "Personal finance simulator using Monte Carlo methods to model portfolio growth under uncertainty. Python backend for simulations, SwiftUI frontend for visualization.",
-    metrics:  ["10,000+ simulation runs", "Multi-asset modeling"],
+    metrics:  ["10,000 simulation runs", "Multi-asset modeling"],
     stack:    ["Python", "SwiftUI", "NumPy", "Matplotlib"],
     link: "https://github.com/rexellk/Finance-App"
   },
@@ -232,8 +233,7 @@ export const PROJECTS = [
 export const CONTACT = {
   headingLine1: "Let's",
   headingEm:    "build",
-  sub:          `Open to conversations about interesting problems, full-time roles after Dec 2026,
-                 or anything you're building that needs someone who ships.`,
+  sub:          `Open to conversations about consumer products, cooking, music, or anything you're building that needs an engineer who thinks like a founder.`,
 
   // Links shown as buttons — set primary: true on the one you want highlighted
   links: [
@@ -244,5 +244,5 @@ export const CONTACT = {
   ],
 
   footerName: "Rexell Kurniawan",
-  footerCopy: "© 2026 · Built with intent",
+  footerCopy: "© 2026 · Built from scratch, like everything else",
 };
