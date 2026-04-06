@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 
 const LINES = [
   <>INIT <span style={{ color: '#4fc3f7' }}>SYSTEM_BOOT</span> ...</>,
-  <>LOADING <span style={{ color: '#4fc3f7' }}>KERNEL</span> ...</>,
+  <>LOADING <span style={{ color: '#4fc3f7' }}>ASSETS</span> ...</>,
   <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>CONJURING <span style={{ color: '#ab47bc' }}>NETHERWING</span><img src={`${import.meta.env.BASE_URL}Netherwing_Logo.PNG`} alt="" style={{ height: '1.4em', filter: 'drop-shadow(0 0 6px rgba(171,71,188,0.9)) drop-shadow(0 0 14px rgba(171,71,188,0.5))' }} />[OK]</span>,
   <>ESTABLISHING <span style={{ color: '#4fc3f7' }}>CONNECTION</span> ...</>,
   <>WELCOME, <span style={{ color: '#4fc3f7' }}>GUEST</span>.</>,
@@ -50,28 +50,57 @@ export default function LoadingScreen({ onComplete }) {
   const onCompleteRef = useRef(onComplete)
 
   useEffect(() => {
-    // Stagger lines in — runs once on mount only
-    LINES.forEach((_, i) => {
-      const t = setTimeout(() => {
-        setVisibleCount(i + 1)
+    const timers = timerRefs.current
+    let cancelled = false
 
-        // After last line, wait then fade out
-        if (i === LINES.length - 1) {
-          const hold = setTimeout(() => {
-            setFading(true)
-            const fade = setTimeout(() => {
-              setDone(true)
-              onCompleteRef.current?.()
-            }, FADEOUT_MS)
-            timerRefs.current.push(fade)
-          }, HOLD_MS)
-          timerRefs.current.push(hold)
-        }
-      }, STAGGER_MS * (i + 1))
-      timerRefs.current.push(t)
+    // Preload the logo so we know when it's ready
+    const logoReady = new Promise((resolve) => {
+      const img = new Image()
+      img.onload = resolve
+      img.onerror = resolve // don't block forever on network error
+      img.src = `${import.meta.env.BASE_URL}Netherwing_Logo.PNG`
     })
 
-    return () => timerRefs.current.forEach(clearTimeout)
+    // Lines 0 and 1 (INIT + LOADING KERNEL) show immediately with normal stagger
+    ;[0, 1].forEach((i) => {
+      const t = setTimeout(() => {
+        if (cancelled) return
+        setVisibleCount(i + 1)
+      }, STAGGER_MS * (i + 1))
+      timers.push(t)
+    })
+
+    // After line 1 appears, block until logo is loaded, then continue
+    const waitTimer = setTimeout(() => {
+      logoReady.then(() => {
+        if (cancelled) return
+        LINES.slice(2).forEach((_, j) => {
+          const t2 = setTimeout(() => {
+            if (cancelled) return
+            const idx = 2 + j
+            setVisibleCount(idx + 1)
+
+            if (idx === LINES.length - 1) {
+              const hold = setTimeout(() => {
+                if (cancelled) return
+                setFading(true)
+                const fade = setTimeout(() => {
+                  if (cancelled) return
+                  setDone(true)
+                  onCompleteRef.current?.()
+                }, FADEOUT_MS)
+                timers.push(fade)
+              }, HOLD_MS)
+              timers.push(hold)
+            }
+          }, STAGGER_MS * (j + 1))
+          timers.push(t2)
+        })
+      })
+    }, STAGGER_MS * 2)
+    timers.push(waitTimer)
+
+    return () => { cancelled = true; timers.forEach(clearTimeout) }
   }, [])
 
   if (done) return null
