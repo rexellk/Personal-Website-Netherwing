@@ -39,6 +39,9 @@ export default function DragonScene() {
     renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
     renderer.domElement.style.background = "transparent";
+    renderer.domElement.addEventListener('webglcontextlost', (e) => {
+      console.error('❌ WebGL context LOST', e)
+    })
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
