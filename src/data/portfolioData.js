@@ -7,6 +7,7 @@
 import amazonLogo  from "../images/amazon-logo.jpg";
 import desaiLogo   from "../images/desai-logo.jpeg";
 import permiasLogo from "../images/permias-logo.jpeg";
+import rexellPfp   from "../images/rexell-pfp.jpg";
 
 import permiasWebsite from "../images/permias-website.png"
 import revoWebsite from "../images/REVO-website.png"
@@ -31,6 +32,9 @@ export const HERO = {
 //  ABOUT
 // ─────────────────────────────────────────────
 export const ABOUT = {
+  // Profile picture — swap out the image file here
+  profileImage: rexellPfp,
+
   // Section heading — "Engineer with <em>business instinct</em>"
   headingLine1: "Engineer with",
   headingEm:    "business instinct",
