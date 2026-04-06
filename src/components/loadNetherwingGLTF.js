@@ -20,9 +20,27 @@ export function loadNetherwingGLTF() {
     });
   }
 
-  // Each caller gets a structural clone so animations/materials are independent
-  return cachedPromise.then((gltf) => ({
-    scene: SkeletonUtils.clone(gltf.scene),
-    animations: gltf.animations,
-  }));
+  // Each caller gets a structural clone with fully independent materials and textures
+  // so separate WebGL contexts (DragonScene + ClawScene) don't share GPU objects
+  return cachedPromise.then((gltf) => {
+    const clonedScene = SkeletonUtils.clone(gltf.scene);
+
+    clonedScene.traverse((child) => {
+      if (child.isMesh) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        const cloned = mats.map(m => {
+          const mat = m.clone();
+          if (mat.map)          mat.map          = mat.map.clone();
+          if (mat.normalMap)    mat.normalMap    = mat.normalMap.clone();
+          if (mat.roughnessMap) mat.roughnessMap = mat.roughnessMap.clone();
+          if (mat.metalnessMap) mat.metalnessMap = mat.metalnessMap.clone();
+          if (mat.emissiveMap)  mat.emissiveMap  = mat.emissiveMap.clone();
+          return mat;
+        });
+        child.material = Array.isArray(child.material) ? cloned : cloned[0];
+      }
+    });
+
+    return { scene: clonedScene, animations: gltf.animations };
+  });
 }
