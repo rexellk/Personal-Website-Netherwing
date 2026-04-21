@@ -243,7 +243,7 @@ export default function DragonFly() {
         .to(camera.position, { z: 3.5, duration: 1.0, ease: "power2.inOut" }, 0);
 
       const flyAudio = new Audio(`${import.meta.env.BASE_URL}DragonFly1.mp3`);
-      flyAudio.volume = 0.5
+      flyAudio.volume = 0.6
 
       let flyHasRun = false;
       window.startDragonRoar = () => {

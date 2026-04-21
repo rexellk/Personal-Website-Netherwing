@@ -12,10 +12,10 @@ import DragonFly_2 from './components/DragonFly_2'
 
 const ANIMATION_MS = 5000
 const FLASH_DURATION = 550
-const AMBIENT_MAX_VOLUME  = 0.05   // full volume when at hero (0.0–1.0)
+const AMBIENT_VOLUME  = 0.3   // ambient track volume (0.0–1.0)
 const CROSSFADE_DURATION  = 5.0   // seconds for the overlap crossfade
 const CROSSFADE_OVERLAP   = 5.0   // seconds before intro ends to start ambient
-const SCROLL_FADE_RANGE   = 2000  // scrollY (px) at which ambient is fully silent
+
 
 export default function App() {
   const [booting, setBooting] = useState(true)
@@ -51,24 +51,13 @@ export default function App() {
       .then(buf => { audioBufferRef.current = buf })
       .catch(err => console.error('audio load error:', err))
 
-    fetch(`${import.meta.env.BASE_URL}NetherRealm-Ambient.mp3`)
+    fetch(`${import.meta.env.BASE_URL}Antila_Floriography.mp3`)
       .then(r => r.arrayBuffer())
       .then(arr => ctx.decodeAudioData(arr))
       .then(buf => { ambientBufferRef.current = buf })
       .catch(err => console.error('ambient load error:', err))
   }, [])
 
-  // Scroll-based ambient volume
-  useEffect(() => {
-    function onScroll() {
-      const gain = ambientGainRef.current
-      if (!gain) return
-      const t = Math.min(1, window.scrollY / SCROLL_FADE_RANGE)
-      gain.gain.value = AMBIENT_MAX_VOLUME * (1 - t)
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
 
   // Lock scroll from page load — unlocked after flash completes
   useEffect(() => {
@@ -112,7 +101,7 @@ export default function App() {
           const src = ctx.createBufferSource()
           src.buffer = audioBufferRef.current
           const gain = ctx.createGain()
-          gain.gain.value = 0.4  // ← 0.0 = silent, 1.0 = full volume
+          gain.gain.value = 0.6  // ← 0.0 = silent, 1.0 = full volume
           src.connect(gain)
           gain.connect(masterGainRef.current)
           const startAt = ctx.currentTime + AUDIO_DELAY_MS / 1000
@@ -131,7 +120,7 @@ export default function App() {
             // Fade in ambient
             const ambientGain = ctx.createGain()
             ambientGain.gain.setValueAtTime(0, crossfadeAt)
-            ambientGain.gain.linearRampToValueAtTime(AMBIENT_MAX_VOLUME, crossfadeAt + CROSSFADE_DURATION)
+            ambientGain.gain.linearRampToValueAtTime(AMBIENT_VOLUME, crossfadeAt + CROSSFADE_DURATION)
             ambientGain.connect(masterGainRef.current)
             ambientGainRef.current = ambientGain
 
