@@ -9,6 +9,17 @@ import RiftParticles from './components/RiftParticles'
 import Portfolio from './web_components/Portfolio'
 import DragonFly from './components/DragonFly'
 import DragonFly_2 from './components/DragonFly_2'
+import MobileScreen from './components/MobileScreen'
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024)
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+  return isMobile
+}
 
 const ANIMATION_MS = 5000
 const FLASH_DURATION = 550
@@ -17,7 +28,7 @@ const CROSSFADE_DURATION  = 5.0   // seconds for the overlap crossfade
 const CROSSFADE_OVERLAP   = 5.0   // seconds before intro ends to start ambient
 
 
-export default function App() {
+function DesktopApp() {
   const [booting, setBooting] = useState(true)
   const [animating, setAnimating] = useState(false)
   const [flashing, setFlashing] = useState(false)
@@ -194,4 +205,9 @@ export default function App() {
       )}
     </main>
   )
+}
+
+export default function App() {
+  const isMobile = useIsMobile()
+  return isMobile ? <MobileScreen /> : <DesktopApp />
 }
