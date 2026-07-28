@@ -24,7 +24,7 @@ export const HERO = {
   lastName:   "Kurniawan",
   tagline:    "Software Engineer · Builder · U of Michigan",
   sub:        "Ann Arbor, Michigan · San Francisco → May 2026",
-  resumeUrl:  "https://drive.google.com/file/d/10dNoRvINeiCV5MuUxld_YrD9HZ1axYkH/view?usp=sharing",
+  resumeUrl:  "https://drive.google.com/file/d/151vSUe_PnrXY1rpc6VT5YrNhvGBmrQbS/view?usp=sharing",
   email:      "k.rexnath@gmail.com",
 };
 
@@ -42,7 +42,7 @@ export const ABOUT = {
   // Body paragraphs — each string is one <p>
   paragraphs: [
     `CS student at <strong>University of Michigan</strong> (Dec 2026),
-    incoming <strong>Amazon SDE intern</strong> on the eero iOS team in San Francisco.
+    prev <strong>Amazon SDE intern</strong> on the eero mobile team in San Francisco.
     I build things that ship, production features for five early-stage startups,
     a national website serving 8,000+ students.`,
 
@@ -73,11 +73,11 @@ export const ABOUT = {
 // ─────────────────────────────────────────────
 export const EXPERIENCES = [
   {
-    company:   "Amazon Eero",
-    role:      "Software Developer Engineer Intern · iOS",
+    company:   "Amazon (eero)",
+    role:      "Software Developer Engineer Intern · iOS · Android",
     period:    "May – Aug 2026 · San Francisco",
-    desc:      "Joining the eero iOS team in SOMA San Francisco. Building features for the home networking app used by millions. Swift, TCA architecture, SwiftUI. Deep-diving into consumer iOS product at scale.",
-    tags:      ["Swift", "SwiftUI", "TCA", "iOS"],
+    desc:      "Shipped 2 solo projects at Amazon (eero) this summer, from security-critical mobile gates for T-Mobile to a full end-to-end bug reporting redesign, across iOS, Android, and Scala backend, serving 10M+ MAU.",
+    tags:      ["Swift", "Kotlin", "Scala", "SwiftUI", "Jetpack Compose"],
     logo:      amazonLogo,
     initials:  "AE",
     iconColor: "#ff9900",
