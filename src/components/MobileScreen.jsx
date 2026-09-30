@@ -53,7 +53,7 @@ export default function MobileScreen() {
             style={{
               position: 'absolute',
               inset: -40,
-              background: 'radial-gradient(ellipse 65% 45% at 50% 50%, rgba(157,78,221,0.16), transparent 70%)',
+              background: 'radial-gradient(ellipse 65% 45% at 50% 50%, rgba(143,120,196,0.14), transparent 70%)',
               pointerEvents: 'none',
             }}
           />
@@ -63,9 +63,7 @@ export default function MobileScreen() {
 
         {/* Role line */}
         <div className="pv-role-line" style={{ marginTop: 20 }}>
-          <span style={{ fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(199,125,255,0.72)' }}>
-            {HERO.tagline}
-          </span>
+          <span style={{ fontSize: 11, letterSpacing: '0.22em' }}>{HERO.tagline}</span>
         </div>
 
         {/* Sub text */}
@@ -78,16 +76,16 @@ export default function MobileScreen() {
             className="pv-btn-primary"
             target="_blank"
             rel="noreferrer"
-            style={{ padding: '15px 36px', fontSize: 12 }}
+            style={{ padding: '15px 24px', fontSize: 11 }}
           >
-            View Resume
+            View resume
           </a>
           <a
             href={`mailto:${HERO.email}`}
             className="pv-btn-ghost"
-            style={{ padding: '15px 36px', fontSize: 12 }}
+            style={{ padding: '15px 24px', fontSize: 11 }}
           >
-            Email
+            Email me
           </a>
         </div>
 
@@ -96,8 +94,8 @@ export default function MobileScreen() {
           style={{
             marginTop: 52,
             padding: '18px 20px',
-            border: '1px solid rgba(199,125,255,0.14)',
-            borderRadius: 14,
+            border: '1px solid var(--pv-rule)',
+            borderRadius: 2,
             background: 'rgba(255,255,255,0.025)',
             backdropFilter: 'blur(8px)',
             opacity: 0,
@@ -106,19 +104,19 @@ export default function MobileScreen() {
         >
           <p
             style={{
-              fontSize: 9,
-              letterSpacing: '0.24em',
-              textTransform: 'uppercase',
-              color: 'rgba(199,125,255,0.5)',
+              fontSize: 14,
+              fontFamily: 'var(--pv-body)',
+              color: 'var(--pv-moon)',
               margin: 0,
             }}
           >
-            Desktop Experience Required
+            Best on desktop
           </p>
           <p
             style={{
               fontSize: 13,
-              color: 'rgba(224,170,255,0.42)',
+              color: 'var(--pv-text-dim)',
+              fontFamily: 'var(--pv-body)',
               margin: '10px 0 0',
               letterSpacing: '0.04em',
               lineHeight: 1.6,

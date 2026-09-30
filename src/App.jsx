@@ -28,6 +28,68 @@ const CROSSFADE_DURATION  = 5.0   // seconds for the overlap crossfade
 const CROSSFADE_OVERLAP   = 5.0   // seconds before intro ends to start ambient
 
 
+// Start the soundtrack in sync with the intro, from however far in we already are.
+// A wheel scroll isn't a user-activation gesture, so the AudioContext can still be
+// suspended when the intro starts; the first click (e.g. the sound button) resumes it
+// and this picks the music up at the right offset instead of never starting.
+function startMusic(r) {
+  const ctx = r.audioCtxRef.current
+  if (!ctx || ctx.state !== 'running' || r.musicStartedRef.current) return
+  if (r.triggerTimeRef.current === null || !r.audioBufferRef.current) return
+  r.musicStartedRef.current = true
+
+  if (!r.masterGainRef.current) {
+    const master = ctx.createGain()
+    master.gain.value = window.audioMuted ? 0 : 1
+    master.connect(ctx.destination)
+    r.masterGainRef.current = master
+  }
+
+  const AUDIO_DELAY = 0.7
+  const introDuration = r.audioBufferRef.current.duration
+  // Seconds into the intro track we should be right now (negative = not started yet)
+  const offset = (performance.now() - r.triggerTimeRef.current) / 1000 - AUDIO_DELAY
+  const introStartAt = ctx.currentTime - offset  // virtual start time of the intro
+  const crossfadeAt = introStartAt + introDuration - CROSSFADE_OVERLAP
+
+  if (offset < introDuration - CROSSFADE_OVERLAP) {
+    const src = ctx.createBufferSource()
+    src.buffer = r.audioBufferRef.current
+    const gain = ctx.createGain()
+    gain.gain.value = 0.6  // ← 0.0 = silent, 1.0 = full volume
+    src.connect(gain)
+    gain.connect(r.masterGainRef.current)
+    if (offset < 0) src.start(introStartAt)
+    else src.start(ctx.currentTime, offset)
+
+    if (r.ambientBufferRef.current) {
+      // Fade out intro while ambient fades in, CROSSFADE_OVERLAP s before intro ends
+      gain.gain.setValueAtTime(0.4, crossfadeAt)
+      gain.gain.linearRampToValueAtTime(0, crossfadeAt + CROSSFADE_DURATION)
+      startAmbient(r, crossfadeAt, CROSSFADE_DURATION)
+    }
+  } else if (r.ambientBufferRef.current) {
+    // Intro is (nearly) over — go straight to the looping background track
+    startAmbient(r, ctx.currentTime, 2.0)
+  }
+}
+
+function startAmbient(r, at, fadeSeconds) {
+  const ctx = r.audioCtxRef.current
+  const ambientGain = ctx.createGain()
+  ambientGain.gain.setValueAtTime(0, at)
+  ambientGain.gain.linearRampToValueAtTime(AMBIENT_VOLUME, at + fadeSeconds)
+  ambientGain.connect(r.masterGainRef.current)
+  r.ambientGainRef.current = ambientGain
+
+  const ambient = ctx.createBufferSource()
+  ambient.buffer = r.ambientBufferRef.current
+  ambient.loop = true
+  ambient.connect(ambientGain)
+  ambient.start(at)
+}
+
+
 function DesktopApp() {
   const [booting, setBooting] = useState(true)
   const [animating, setAnimating] = useState(false)
@@ -37,13 +99,6 @@ function DesktopApp() {
   const triggered = useRef(false)
   const masterGainRef = useRef(null)
 
-  // Sync mute state to all audio
-  useEffect(() => {
-    window.audioMuted = muted
-    if (masterGainRef.current) {
-      masterGainRef.current.gain.value = muted ? 0 : 1
-    }
-  }, [muted])
 
   // Create AudioContext + fetch buffer immediately on mount
   // resume() inside the wheel handler — wheel is a trusted gesture
@@ -51,6 +106,23 @@ function DesktopApp() {
   const audioBufferRef = useRef(null)
   const ambientBufferRef = useRef(null)
   const ambientGainRef = useRef(null)
+  const triggerTimeRef = useRef(null)   // performance.now() when the intro was triggered
+  const musicStartedRef = useRef(false) // guards against starting the soundtrack twice
+
+  // Sync mute state to all audio. Unmuting is a click, which is a real user
+  // gesture, so it's also where a still-suspended AudioContext gets resumed.
+  useEffect(() => {
+    window.audioMuted = muted
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.value = muted ? 0 : 1
+    }
+    const ctx = audioCtxRef.current
+    if (!muted && ctx) {
+      const r = { audioCtxRef, audioBufferRef, ambientBufferRef, ambientGainRef, masterGainRef, triggerTimeRef, musicStartedRef }
+      if (ctx.state === 'suspended') ctx.resume().then(() => startMusic(r))
+      else startMusic(r)
+    }
+  }, [muted])
 
   useEffect(() => {
     const ctx = new AudioContext()
@@ -96,58 +168,14 @@ function DesktopApp() {
       setAnimating(true)
       window.dispatchEvent(new CustomEvent('riftTrigger'))
 
-      if (audioCtxRef.current && audioBufferRef.current) {
-        const ctx = audioCtxRef.current
-
-        // Create master gain once and store it for mute control
-        if (!masterGainRef.current) {
-          const master = ctx.createGain()
-          master.gain.value = window.audioMuted ? 0 : 1
-          master.connect(ctx.destination)
-          masterGainRef.current = master
-        }
-
-        const AUDIO_DELAY_MS = 700
-        const play = () => {
-          const src = ctx.createBufferSource()
-          src.buffer = audioBufferRef.current
-          const gain = ctx.createGain()
-          gain.gain.value = 0.6  // ← 0.0 = silent, 1.0 = full volume
-          src.connect(gain)
-          gain.connect(masterGainRef.current)
-          const startAt = ctx.currentTime + AUDIO_DELAY_MS / 1000
-          src.start(startAt)
-
-          // Schedule ambient to start CROSSFADE_OVERLAP seconds before intro ends,
-          // fading in while intro fades out simultaneously
-          const introDuration = audioBufferRef.current.duration
-          const crossfadeAt = startAt + introDuration - CROSSFADE_OVERLAP
-
-          if (ambientBufferRef.current && crossfadeAt > ctx.currentTime) {
-            // Fade out intro
-            gain.gain.setValueAtTime(0.4, crossfadeAt)
-            gain.gain.linearRampToValueAtTime(0, crossfadeAt + CROSSFADE_DURATION)
-
-            // Fade in ambient
-            const ambientGain = ctx.createGain()
-            ambientGain.gain.setValueAtTime(0, crossfadeAt)
-            ambientGain.gain.linearRampToValueAtTime(AMBIENT_VOLUME, crossfadeAt + CROSSFADE_DURATION)
-            ambientGain.connect(masterGainRef.current)
-            ambientGainRef.current = ambientGain
-
-            const ambient = ctx.createBufferSource()
-            ambient.buffer = ambientBufferRef.current
-            ambient.loop = true
-            ambient.connect(ambientGain)
-            ambient.start(crossfadeAt)
-          }
-        }
-        // resume() unlocks the context from within the wheel gesture
-        if (ctx.state === 'suspended') {
-          ctx.resume().then(play)
-        } else {
-          play()
-        }
+      triggerTimeRef.current = performance.now()
+      const ctx = audioCtxRef.current
+      if (ctx) {
+        // May stay suspended (wheel isn't a user-activation gesture) — the sound
+        // button's click resumes it later and startMusic catches up.
+        const r = { audioCtxRef, audioBufferRef, ambientBufferRef, ambientGainRef, masterGainRef, triggerTimeRef, musicStartedRef }
+        if (ctx.state === 'suspended') ctx.resume().then(() => startMusic(r)).catch(() => {})
+        else startMusic(r)
       }
 
       // Poll until DragonScene GLB is ready, then start animation + 5s timer together

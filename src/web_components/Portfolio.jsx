@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
 import "./portfolio.css";
 
 import ButterflyCanvas from "./ButterflyCanvas";
+import MegaphoneIcon from "./MegaphoneIcon";
 import PortfolioNav from "./PortfolioNav";
-import SectionDivider from "./SectionDivider";
 import Hero from "./Hero";
 import About from "./About";
 import Experience from "./Experience";
 import Projects from "./Projects";
 import Contact from "./Contact";
 import TronDecor from "./TronDecor";
+import SectionDivider from "./SectionDivider";
+import BackgroundAccents from "./BackgroundAccents";
 
 function Cursor() {
   const cursorRef = useRef(null);
@@ -71,7 +72,7 @@ function Cursor() {
           ...base,
           zIndex: 9998,
           width: 30, height: 30,
-          border: "1px solid rgba(199,125,255,0.35)",
+          border: "1px solid rgba(201,139,230,0.4)",
           borderRadius: "50%",
         }}
       />
@@ -105,7 +106,7 @@ function ScrollVine() {
         style={{
           position: "fixed", left: 28, top: 0, bottom: 0, width: 1,
           zIndex: 5, pointerEvents: "none",
-          background: "linear-gradient(to bottom, transparent 0%, rgba(199,125,255,0.15) 20%, rgba(199,125,255,0.15) 80%, transparent 100%)",
+          background: "linear-gradient(to bottom, transparent 0%, rgba(143,120,196,0.18) 20%, rgba(143,120,196,0.18) 80%, transparent 100%)",
         }}
       />
       <div
@@ -113,7 +114,7 @@ function ScrollVine() {
           position: "fixed", left: 28, top: 0, width: 1,
           height: `${progress * 100}vh`,
           zIndex: 6, pointerEvents: "none",
-          background: "linear-gradient(to bottom, var(--pv-lavender), var(--pv-purple-light))",
+          background: "linear-gradient(to bottom, var(--pv-petal), var(--pv-orchid))",
           transition: "height 0.1s linear",
         }}
       />
@@ -121,31 +122,29 @@ function ScrollVine() {
   );
 }
 
-function Socials() {
-  const style = {
-    position: "fixed", left: 48, bottom: 72, zIndex: 100,
-    display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
-    opacity: 0, animation: "pv-fadeIn 1s ease 1.8s forwards",
-  };
+// Wireframe megaphone — faint glass outline when off; glowing lilac with
+// guilloché lines in the bell and rippling sound arcs when on.
+function SoundToggle({ muted, onToggle, calling }) {
+  const on = !muted;
   return (
-    <div style={style}>
-      <a href="https://linkedin.com/in/rexellkurniawan" className="pv-social-link" target="_blank" rel="noreferrer">
-        LinkedIn
-      </a>
-      <a href="https://github.com/rexellk" className="pv-social-link" target="_blank" rel="noreferrer">
-        GitHub
-      </a>
-      <div style={{ width: 1, height: 44, background: "linear-gradient(to bottom, rgba(199,125,255,0.3), transparent)", marginTop: 4 }} />
-    </div>
+    <button
+      className={`pv-sound${on ? " on" : ""}${calling ? " calling" : ""}`}
+      onClick={onToggle}
+      aria-pressed={on}
+      aria-label={on ? "Turn sound off" : "Turn sound on"}
+      title={on ? "Turn sound off" : "Turn sound on"}
+    >
+      <MegaphoneIcon width={62} />
+      <span className="pv-sound-label">{on ? "Sound on" : "Sound off"}</span>
+    </button>
   );
 }
 
 function StatusTag({ muted, setMuted }) {
-  const [hintVisible, setHintVisible] = useState(true);
-  const [btnHovered, setBtnHovered] = useState(false);
+  const [introPending, setIntroPending] = useState(true);
 
   useEffect(() => {
-    const onDone = () => setHintVisible(false);
+    const onDone = () => setIntroPending(false);
     window.addEventListener('riftTrigger', onDone, { once: true });
     return () => window.removeEventListener('riftTrigger', onDone);
   }, []);
@@ -158,73 +157,9 @@ function StatusTag({ muted, setMuted }) {
         opacity: 0, animation: "pv-fadeIn 1s ease 2s forwards",
       }}
     >
-      {/* Hint label + curved arrow pointing right toward the button */}
-      <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-end", width: "100%" }}>
-        <div style={{
-          position: "absolute", right: 46, top: "50%", transform: "translateY(-80%)",
-          display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2,
-          pointerEvents: "none",
-          opacity: hintVisible ? 1 : 0,
-          transition: "opacity 0.8s ease",
-        }}>
-          <span style={{
-            fontFamily: "'Jost', sans-serif", fontSize: 8, letterSpacing: "0.12em",
-            textTransform: "uppercase", color: "rgba(199,125,255,0.28)",
-            whiteSpace: "nowrap", textAlign: "right",
-          }}>
-            press for immersive
-          </span>
-          <span style={{
-            fontFamily: "'Jost', sans-serif", fontSize: 8, letterSpacing: "0.12em",
-            textTransform: "uppercase", color: "rgba(199,125,255,0.28)",
-            whiteSpace: "nowrap", textAlign: "right",
-          }}>
-            experience
-          </span>
-          {/* Curved arrow SVG pointing right */}
-          <svg width="28" height="18" viewBox="0 0 28 18" fill="none" style={{ marginTop: 2, alignSelf: "flex-end" }}>
-            <path d="M2 14 Q10 2 22 8" stroke="rgba(199,125,255,0.28)" strokeWidth="1" fill="none" strokeLinecap="round" />
-            <polyline points="19,5 22,8 18,10" stroke="rgba(199,125,255,0.28)" strokeWidth="1" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-
-        <button
-          onClick={() => setMuted(m => !m)}
-          onMouseEnter={() => setBtnHovered(true)}
-          onMouseLeave={() => setBtnHovered(false)}
-          style={{
-            background: btnHovered ? "rgba(30,0,50,0.85)" : "rgba(10,0,20,0.7)",
-            border: `1px solid ${btnHovered ? "rgba(199,125,255,0.7)" : "rgba(199,125,255,0.3)"}`,
-            borderRadius: "50%", width: 36, height: 36,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer",
-            backdropFilter: "blur(8px)",
-            boxShadow: btnHovered ? "0 0 14px rgba(199,125,255,0.35)" : "none",
-            transform: btnHovered ? "scale(1.1)" : "scale(1)",
-            transition: "border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.2s",
-            padding: 0, flexShrink: 0,
-          }}
-          title={muted ? "Unmute" : "Mute"}
-        >
-          {muted
-            ? <VolumeX size={16} color={btnHovered ? "rgba(224,170,255,1)" : "rgba(199,125,255,0.8)"} strokeWidth={1.5} />
-            : <Volume2 size={16} color={btnHovered ? "rgba(224,170,255,1)" : "rgba(199,125,255,0.8)"} strokeWidth={1.5} />
-          }
-        </button>
-      </div>
-      <div className="pv-status-dot" />
-      <div
-        style={{
-          padding: "5px 12px", borderRadius: 100,
-          border: "1px solid rgba(72,202,228,0.28)",
-          background: "rgba(72,202,228,0.06)",
-          fontSize: 9, letterSpacing: "0.16em", textTransform: "uppercase",
-          color: "rgba(72,202,228,0.7)",
-          writingMode: "vertical-rl",
-          fontFamily: "'Jost', sans-serif",
-        }}
-      >
-        Amazon eero &middot; iOS SDE Intern
+      <div>
+        {/* Calls out (pulsing arcs) while muted, until the intro starts */}
+        <SoundToggle muted={muted} calling={muted && introPending} onToggle={() => setMuted(m => !m)} />
       </div>
     </div>
   );
@@ -307,12 +242,13 @@ export default function Portfolio({ modelReady, muted, setMuted }) {
 
   return (
     <div
+      className="pv-root"
       style={{
         background: "transparent",
         color: "var(--pv-silver)",
-        fontFamily: "'Jost', sans-serif",
+        fontFamily: "var(--pv-body)",
         fontWeight: 300,
-        overflowX: "hidden",
+        overflowX: "clip",
         cursor: "none",
         minHeight: "100vh",
       }}
@@ -325,7 +261,6 @@ export default function Portfolio({ modelReady, muted, setMuted }) {
       <div className="pv-rift-glow" />
 
       <PortfolioNav />
-      <Socials />
       <StatusTag muted={muted} setMuted={setMuted} />
 
       <main>
@@ -333,16 +268,17 @@ export default function Portfolio({ modelReady, muted, setMuted }) {
         <Hero riftTriggered={riftTriggered} modelReady={modelReady} />
 
         {/* Opaque cover so portfolio sections scroll over the rift cleanly */}
-        <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15, overflowX: "hidden" }}>
+        <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15, overflowX: "clip" }}>
+          <BackgroundAccents />
           <TronDecor />
-          <SectionDivider variant="purple" />
           <div ref={aboutRef}>
             <About />
           </div>
-          <SectionDivider variant="pink" />
+          <SectionDivider />
           <Experience />
-          <SectionDivider variant="purple" />
+          <SectionDivider />
           <Projects />
+          <SectionDivider variant="pair" />
           <div ref={contactRef}>
             <Contact />
           </div>

@@ -2,18 +2,18 @@ import { useEffect, useRef, useState } from "react"
 
 // Branch nodes at fractional positions along the spine (0 = top, 1 = bottom)
 const NODES = [
-  { frac: 0.08, color: "rgba(199,125,255,0.9)", label: "INIT" },
-  { frac: 0.22, color: "rgba(72,202,228,0.9)",  label: "ABOUT" },
-  { frac: 0.38, color: "rgba(199,125,255,0.9)", label: "EXP" },
-  { frac: 0.55, color: "rgba(72,202,228,0.9)",  label: "PROJ" },
-  { frac: 0.72, color: "rgba(199,125,255,0.9)", label: "STACK" },
-  { frac: 0.90, color: "rgba(72,202,228,0.9)",  label: "END" },
+  { frac: 0.08, color: "rgba(201,139,230,0.9)", label: "INIT" },
+  { frac: 0.22, color: "rgba(240,201,228,0.9)",  label: "ABOUT" },
+  { frac: 0.38, color: "rgba(201,139,230,0.9)", label: "EXP" },
+  { frac: 0.55, color: "rgba(240,201,228,0.9)",  label: "PROJ" },
+  { frac: 0.72, color: "rgba(201,139,230,0.9)", label: "STACK" },
+  { frac: 0.90, color: "rgba(240,201,228,0.9)",  label: "END" },
 ]
 
 const css = `
   @keyframes tron-cursor-pulse {
-    0%, 100% { opacity: 1;   filter: drop-shadow(0 0 4px rgba(199,125,255,1)); }
-    50%       { opacity: 0.5; filter: drop-shadow(0 0 2px rgba(199,125,255,0.4)); }
+    0%, 100% { opacity: 1;   filter: drop-shadow(0 0 4px rgba(201,139,230,1)); }
+    50%       { opacity: 0.5; filter: drop-shadow(0 0 2px rgba(201,139,230,0.4)); }
   }
   @keyframes tron-node-arrive {
     0%   { r: 2; opacity: 0.4; }
@@ -98,18 +98,18 @@ export default function TronDecor() {
           {/* Ghost spine — full height, always visible */}
           <line
             x1={SPINE_X} y1={0} x2={SPINE_X} y2={VH}
-            stroke="rgba(199,125,255,0.1)" strokeWidth="1"
+            stroke="rgba(201,139,230,0.1)" strokeWidth="1"
           />
 
           {/* Progress fill — grows downward as you scroll */}
           <line
             x1={SPINE_X} y1={0} x2={SPINE_X} y2={fillY}
-            stroke="rgba(199,125,255,0.55)" strokeWidth="1.5"
+            stroke="rgba(201,139,230,0.55)" strokeWidth="1.5"
           />
           {/* Bright glow copy on top */}
           <line
             x1={SPINE_X} y1={0} x2={SPINE_X} y2={fillY}
-            stroke="rgba(199,125,255,0.2)" strokeWidth="4"
+            stroke="rgba(201,139,230,0.2)" strokeWidth="4"
           />
 
           {/* Branch nodes + horizontal stubs */}
@@ -117,7 +117,7 @@ export default function TronDecor() {
             const ny = node.frac * VH
             const arrived = progress >= node.frac
             const alpha = arrived ? 1 : 0.12
-            const branchColor = arrived ? node.color : "rgba(199,125,255,0.1)"
+            const branchColor = arrived ? node.color : "rgba(201,139,230,0.1)"
             const bx2 = SPINE_X + BRANCH_LEN
 
             return (
@@ -125,7 +125,7 @@ export default function TronDecor() {
                 {/* Ghost branch */}
                 <line
                   x1={SPINE_X} y1={ny} x2={bx2} y2={ny}
-                  stroke="rgba(199,125,255,0.07)" strokeWidth="1"
+                  stroke="rgba(201,139,230,0.07)" strokeWidth="1"
                 />
                 {/* Lit branch */}
                 {arrived && (
@@ -149,7 +149,7 @@ export default function TronDecor() {
                 {/* Node circle */}
                 <circle
                   cx={SPINE_X} cy={ny} r={arrived ? 3 : 2}
-                  fill={arrived ? node.color : "rgba(199,125,255,0.15)"}
+                  fill={arrived ? node.color : "rgba(201,139,230,0.15)"}
                   style={{
                     filter: arrived ? `drop-shadow(0 0 4px ${node.color})` : "none",
                     transition: "r 0.3s, fill 0.3s, filter 0.3s",

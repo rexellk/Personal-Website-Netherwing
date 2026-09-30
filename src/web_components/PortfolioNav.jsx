@@ -37,7 +37,8 @@ export default function PortfolioNav() {
         ([entry]) => {
           if (entry.isIntersecting) setActive(id);
         },
-        { threshold: 0.3 }
+        // Active = the section crossing the middle of the viewport (works for sections of any height)
+        { rootMargin: "-45% 0px -55% 0px", threshold: 0 }
       );
       obs.observe(el);
       observers.push(obs);
@@ -58,57 +59,39 @@ export default function PortfolioNav() {
         animation: "pv-fadeIn 0.8s ease forwards",
         display: "flex",
         justifyContent: "center",
-        padding: scrolled ? "16px 48px" : "24px 48px",
-        transition: "padding 0.3s",
+        padding: scrolled ? "18px 48px 28px" : "28px 48px",
+        background: scrolled
+          ? "linear-gradient(to bottom, rgba(12,7,22,0.92) 0%, rgba(12,7,22,0.6) 60%, transparent 100%)"
+          : "transparent",
+        transition: "padding 0.3s, background 0.3s",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          gap: 40,
-          alignItems: "center",
-          padding: "10px 28px",
-          borderRadius: 100,
-          border: scrolled
-            ? "1px solid rgba(199,125,255,0.22)"
-            : "1px solid rgba(199,125,255,0.14)",
-          backdropFilter: "blur(16px)",
-          background: scrolled ? "rgba(3,0,10,0.82)" : "rgba(3,0,10,0.6)",
-          transition: "background 0.3s, border-color 0.3s",
-        }}
-      >
+      <div style={{ display: "flex", gap: 44, alignItems: "center" }}>
         {SECTIONS.map((link) => {
           const isActive = active === link.id;
           return (
-            <div key={link.id} style={{ display: "flex", alignItems: "center", gap: 40 }}>
-              <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                <span
-                  className="pv-nav-link"
-                  onClick={() => document.getElementById(link.id)?.scrollIntoView({ behavior: "smooth" })}
-                  style={{
-                    color: isActive ? "var(--pv-lavender)" : undefined,
-                    transition: "color 0.3s",
-                    cursor: "pointer",
-                  }}
-                >
-                  {link.label}
-                </span>
+            <div key={link.id} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <button
+                className="pv-nav-link"
+                aria-current={isActive ? "true" : undefined}
+                onClick={() => document.getElementById(link.id)?.scrollIntoView({ behavior: "smooth" })}
+              >
+                {link.label}
+              </button>
 
-                {/* Active dot indicator */}
-                <div
-                  style={{
-                    width: isActive ? 16 : 0,
-                    height: 2,
-                    borderRadius: 2,
-                    background: "linear-gradient(90deg, var(--pv-purple-light), var(--pv-lavender))",
-                    boxShadow: isActive ? "0 0 8px rgba(199,125,255,0.7)" : "none",
-                    transition: "width 0.35s cubic-bezier(0.22,1,0.36,1), box-shadow 0.35s",
-                    position: "absolute",
-                    bottom: -6,
-                  }}
-                />
-              </div>
-
+              {/* Active marker — a small glowing dot */}
+              <span
+                aria-hidden="true"
+                style={{
+                  position: "absolute", bottom: -6,
+                  width: 4, height: 4, borderRadius: "50%",
+                  background: "var(--pv-petal)",
+                  boxShadow: "0 0 8px rgba(240,201,228,0.8)",
+                  opacity: isActive ? 1 : 0,
+                  transform: isActive ? "scale(1)" : "scale(0.4)",
+                  transition: "opacity 0.35s, transform 0.35s cubic-bezier(0.22,1,0.36,1)",
+                }}
+              />
             </div>
           );
         })}

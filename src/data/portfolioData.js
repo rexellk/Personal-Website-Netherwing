@@ -237,7 +237,7 @@ export const CONTACT = {
 
   // Links shown as buttons — set primary: true on the one you want highlighted
   links: [
-    { label: "Email Me",  href: "mailto:k.rexnath@gmail.com",                     primary: true  },
+    { label: "Email me",  href: "mailto:k.rexnath@gmail.com",                     primary: true  },
     { label: "LinkedIn",  href: "https://linkedin.com/in/rexellkurniawan",         primary: false },
     { label: "GitHub",    href: "https://github.com/rexellk",                      primary: false },
     // { label: "Resume", href: "https://...",                                      primary: false },
