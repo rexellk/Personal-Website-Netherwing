@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# intro prototype review output
+intro-prototype/frames-*/
+intro-prototype/sheet-*.png
+intro-prototype/*.v[0-9]*.js
