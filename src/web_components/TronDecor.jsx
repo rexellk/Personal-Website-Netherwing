@@ -81,6 +81,7 @@ export default function TronDecor() {
       <style>{css}</style>
       <div
         ref={containerRef}
+        className="pv-tron"
         style={{
           position: "absolute", inset: 0,
           pointerEvents: "none",

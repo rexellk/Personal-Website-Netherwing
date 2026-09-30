@@ -6,6 +6,7 @@ import gsap from "gsap";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { cappedPixelRatio, fitPerspective, onViewportResize } from "./viewport";
 
 // ── Butterfly tuning ──────────────────────────────────────────────────────────
 const BUTTERFLY_COLORS = [
@@ -32,7 +33,7 @@ export default function DragonScene() {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(cappedPixelRatio());
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
@@ -43,6 +44,8 @@ export default function DragonScene() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
     camera.position.set(0, 0, 5);
+    // ClawScene uses the same framing so the claw overlay lines up
+    fitPerspective(camera, W, H, { baseFov: 45 });
 
     // --- POST-PROCESSING PIPELINE ---
     let composer = null;
@@ -372,6 +375,17 @@ export default function DragonScene() {
       window.dispatchEvent(new CustomEvent('dragonReady'));
     });
 
+    // Live resize: renderer, camera framing and bloom buffers
+    const stopResize = onViewportResize((w, h) => {
+      renderer.setPixelRatio(cappedPixelRatio());
+      renderer.setSize(w, h);
+      fitPerspective(camera, w, h, { baseFov: 45 });
+      if (composer) {
+        composer.setPixelRatio(cappedPixelRatio());
+        composer.setSize(w, h);
+      }
+    });
+
     const timer = new Timer();
 
     let rafId;
@@ -436,6 +450,7 @@ export default function DragonScene() {
 
     return () => {
       cancelAnimationFrame(rafId);
+      stopResize();
       el.removeChild(renderer.domElement);
       renderer.dispose();
     };

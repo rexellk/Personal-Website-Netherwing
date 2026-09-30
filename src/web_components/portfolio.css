@@ -25,7 +25,7 @@
   --pv-tech: 'Xirod', var(--pv-body);
   --pv-body: 'Hanken Grotesk', system-ui, sans-serif;
 
-  /* Legacy aliases — still read by MobileScreen, Cursor, TronDecor */
+  /* Legacy aliases — still read by Cursor and TronDecor */
   --pv-void: var(--pv-night);
   --pv-lavender: var(--pv-petal);
   --pv-purple-light: var(--pv-orchid);
@@ -35,7 +35,7 @@
   --pv-border: var(--pv-rule);
 }
 
-/* Keyframes (shared with MobileScreen + intro) */
+/* Keyframes */
 @keyframes pv-fadeUp {
   to { opacity: 1; transform: translateY(0); }
 }
@@ -428,7 +428,7 @@
   font-size: 16px;
   color: var(--pv-text);
 }
-/* Kept for MobileScreen / any stray usage */
+/* Kept for any stray usage */
 .pv-skill-tag { font-family: var(--pv-body); color: var(--pv-text); }
 
 /* ─────────────────────────────────────────────
@@ -755,6 +755,57 @@ a.pv-project-row { cursor: pointer; }
 .pv-nav-link:hover { color: var(--pv-moon); }
 .pv-nav-link[aria-current="true"] { color: var(--pv-moon); }
 
+/* Nav bar (layout moved out of inline styles so it can respond) */
+.pv-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  padding: 28px 48px;
+  opacity: 0;
+  animation: pv-fadeIn 0.8s ease forwards;
+  transition: padding 0.3s, background 0.3s;
+}
+.pv-nav.scrolled {
+  padding: 18px 48px 28px;
+  background: linear-gradient(to bottom, rgba(12,7,22,0.92) 0%, rgba(12,7,22,0.6) 60%, transparent 100%);
+}
+.pv-nav-links { display: flex; gap: 44px; align-items: center; }
+
+.pv-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 0 96px 0 120px;
+  position: relative;
+  z-index: 10;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+/* Bottom-right sound corner */
+.pv-status {
+  position: fixed;
+  right: 36px;
+  bottom: 72px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  animation: pv-fadeIn 1s ease 2s forwards;
+}
+
+/* Custom cursor only where there's a real pointer */
+@media (hover: none), (pointer: coarse) {
+  .pv-cursor { display: none; }
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   .pv-name-first, .pv-name-last, .pv-role-line, .pv-sub-text, .pv-cta-row, .pv-scroll-hint {
@@ -774,7 +825,92 @@ a.pv-project-row { cursor: pointer; }
   .pv-project.flip .pv-project-text { order: 0; }
 }
 
-/* Phones (MobileScreen) — keep the Xirod nameplate inside the viewport */
+/* ─────────────────────────────────────────────
+   Tablet & phone — single column, tighter gutters
+   ───────────────────────────────────────────── */
+@media (max-width: 820px) {
+  .pv-section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 36px;
+    padding: 96px 24px 96px 48px; /* left room for the scroll rail */
+  }
+  .pv-section-head { position: static; }
+  .pv-section-title { font-size: clamp(34px, 8vw, 44px); }
+  .pv-reliquary { width: 170px; margin-top: 32px; }
+  .pv-body { font-size: 16.5px; }
+  .pv-skill-groups { grid-template-columns: minmax(0, 1fr); margin-top: 48px; }
+
+  .pv-exp-item { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 32px 0 36px; }
+  .pv-exp-when { padding-top: 0; }
+  .pv-exp-when span { display: inline; }
+  .pv-exp-when span::before { content: ', '; }
+  .pv-exp-company { font-size: 28px; }
+
+  .pv-project { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 36px 0; }
+  .pv-project.flip .pv-project-text { order: 0; }
+  .pv-project-name { font-size: 32px; }
+  .pv-project-grid { grid-template-columns: minmax(0, 1fr); }
+  .pv-project-grid-title { margin-top: 64px; }
+
+  .pv-contact { padding: 110px 24px 100px; }
+  .pv-contact-sub { font-size: 16.5px; }
+  .pv-footer {
+    margin: 0 24px 0 48px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .pv-divider { padding: 0 24px 0 48px; }
+
+  /* Waves: narrower bundles so they stay in the margins. Side and corner
+     scale by the same x factor (120/220) so the corner join still lines up. */
+  .pv-waves::before,
+  .pv-waves::after { width: 120px; background-size: 120px 1400px; }
+  .pv-waves::before { left: -64px; }
+  .pv-waves::after { right: -64px; }
+  .pv-waves-corner { width: 349px; background-size: 349px 382px; }
+  .pv-waves-corner.left { left: -64px; }
+  .pv-waves-corner.right { right: -64px; }
+
+  /* Scroll rail: compress horizontally so its branch stubs stay in the margin */
+  .pv-tron { transform: scaleX(0.6); transform-origin: left center; }
+  .pv-scroll-vine { left: 17px !important; } /* matches the scaled spine (28 × 0.6) */
+}
+
+@media (max-width: 600px) {
+  .pv-nav, .pv-nav.scrolled { padding-left: 12px; padding-right: 12px; }
+  .pv-nav { padding-top: 18px; padding-bottom: 18px; }
+  .pv-nav-links { gap: 18px; }
+  .pv-nav-link { font-size: 13px; }
+
+  /* Hero tagline: drop the side rules and let it wrap, centered */
+  .pv-role-line {
+    font-size: 10.5px;
+    letter-spacing: 0.13em;
+    text-align: center;
+    padding: 0 24px;
+    line-height: 1.7;
+  }
+  .pv-role-line::before,
+  .pv-role-line::after { display: none; }
+  .pv-sub-text { font-size: 12.5px; letter-spacing: 0.1em; text-align: center; padding: 0 24px; }
+  .pv-cta-row { margin-top: 36px; }
+
+  .pv-status { right: 12px; bottom: 16px; }
+  .pv-sound svg { width: 48px; height: auto; }
+  .pv-sound-label { font-size: 11px; }
+  /* Once the intro has started, shrink to an icon-only chip so it doesn't cover text */
+  .pv-status.intro-done .pv-sound {
+    padding: 8px;
+    border-radius: 50%;
+    background: rgba(12, 7, 22, 0.72);
+    backdrop-filter: blur(6px);
+  }
+  .pv-status.intro-done .pv-sound svg { width: 34px; }
+  .pv-status.intro-done .pv-sound-label { display: none; }
+}
+
+/* Phones — keep the Xirod nameplate inside the viewport */
 @media (max-width: 480px) {
   .pv-name-first { font-size: 7.6vw; }
   .pv-name-last { font-size: 8.4vw; }

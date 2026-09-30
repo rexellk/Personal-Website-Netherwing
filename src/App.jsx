@@ -9,17 +9,6 @@ import RiftParticles from './components/RiftParticles'
 import Portfolio from './web_components/Portfolio'
 import DragonFly from './components/DragonFly'
 import DragonFly_2 from './components/DragonFly_2'
-import MobileScreen from './components/MobileScreen'
-
-function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024)
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 1024)
-    window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [])
-  return isMobile
-}
 
 const ANIMATION_MS = 5000
 const FLASH_DURATION = 550
@@ -156,13 +145,28 @@ function DesktopApp() {
     }, { once: true })
   }, [])
 
+  // Any real tap / click / keypress unlocks audio. Scroll and swipe don't count as
+  // user activation, so the context can still be suspended after the intro starts;
+  // this (and the sound button) resumes it and startMusic catches up in sync.
   useEffect(() => {
-    function onWheel(e) {
-      if (!modelReady || triggered.current || e.deltaY <= 0) return
-      e.preventDefault()
-      triggered.current = true
+    const r = { audioCtxRef, audioBufferRef, ambientBufferRef, ambientGainRef, masterGainRef, triggerTimeRef, musicStartedRef }
+    function unlockAudio() {
+      const ctx = audioCtxRef.current
+      if (!ctx) return
+      if (ctx.state === 'suspended') ctx.resume().then(() => startMusic(r)).catch(() => {})
+      else startMusic(r)
+    }
+    const events = ['pointerdown', 'touchend', 'keydown']
+    events.forEach((ev) => window.addEventListener(ev, unlockAudio))
+    return () => events.forEach((ev) => window.removeEventListener(ev, unlockAudio))
+  }, [])
 
-      console.log("startDragonAnimation exists?", !!window.startDragonAnimation)
+  useEffect(() => {
+    // The intro starts on the first "scroll down" intent: mouse wheel,
+    // trackpad, swipe up on touch screens, or arrow / page / space keys.
+    function startIntro() {
+      if (!modelReady || triggered.current) return false
+      triggered.current = true
 
       document.body.style.overflow = 'hidden'
       setAnimating(true)
@@ -171,8 +175,8 @@ function DesktopApp() {
       triggerTimeRef.current = performance.now()
       const ctx = audioCtxRef.current
       if (ctx) {
-        // May stay suspended (wheel isn't a user-activation gesture) — the sound
-        // button's click resumes it later and startMusic catches up.
+        // May stay suspended (scroll/swipe isn't a user-activation gesture) —
+        // the first tap/click/key resumes it later and startMusic catches up.
         const r = { audioCtxRef, audioBufferRef, ambientBufferRef, ambientGainRef, masterGainRef, triggerTimeRef, musicStartedRef }
         if (ctx.state === 'suspended') ctx.resume().then(() => startMusic(r)).catch(() => {})
         else startMusic(r)
@@ -200,10 +204,41 @@ function DesktopApp() {
           document.body.style.overflow = ''
         }, ANIMATION_MS)
       }, 50)
+      return true
+    }
+
+    function onWheel(e) {
+      if (e.deltaY <= 0) return
+      if (startIntro()) e.preventDefault()
+    }
+
+    let touchStartY = null
+    function onTouchStart(e) { touchStartY = e.touches[0].clientY }
+    function onTouchMove(e) {
+      if (triggered.current) return
+      e.preventDefault() // page is locked until the intro plays; stop rubber-banding
+      if (touchStartY === null) return
+      const swipeUp = touchStartY - e.touches[0].clientY
+      if (swipeUp > 24) startIntro()
+    }
+
+    const INTRO_KEYS = ['ArrowDown', 'PageDown', ' ', 'Spacebar', 'End']
+    function onKeyDown(e) {
+      if (!INTRO_KEYS.includes(e.key)) return
+      if (e.target.closest?.('button, a, input, textarea')) return // let focused controls handle keys
+      if (startIntro()) e.preventDefault()
     }
 
     window.addEventListener('wheel', onWheel, { passive: false })
-    return () => window.removeEventListener('wheel', onWheel)
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('wheel', onWheel)
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('keydown', onKeyDown)
+    }
   }, [modelReady])
 
   return (
@@ -235,7 +270,7 @@ function DesktopApp() {
   )
 }
 
+// The full experience runs on every screen size — scenes and layout resize live
 export default function App() {
-  const isMobile = useIsMobile()
-  return isMobile ? <MobileScreen /> : <DesktopApp />
+  return <DesktopApp />
 }

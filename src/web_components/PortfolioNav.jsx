@@ -50,23 +50,8 @@ export default function PortfolioNav() {
   if (!ready) return null;
 
   return (
-    <nav
-      style={{
-        position: "fixed",
-        top: 0, left: 0, right: 0,
-        zIndex: 200,
-        opacity: 0,
-        animation: "pv-fadeIn 0.8s ease forwards",
-        display: "flex",
-        justifyContent: "center",
-        padding: scrolled ? "18px 48px 28px" : "28px 48px",
-        background: scrolled
-          ? "linear-gradient(to bottom, rgba(12,7,22,0.92) 0%, rgba(12,7,22,0.6) 60%, transparent 100%)"
-          : "transparent",
-        transition: "padding 0.3s, background 0.3s",
-      }}
-    >
-      <div style={{ display: "flex", gap: 44, alignItems: "center" }}>
+    <nav className={`pv-nav${scrolled ? " scrolled" : ""}`}>
+      <div className="pv-nav-links">
         {SECTIONS.map((link) => {
           const isActive = active === link.id;
           return (

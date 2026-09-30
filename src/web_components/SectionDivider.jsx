@@ -6,17 +6,7 @@ export default function SectionDivider({ variant = "full" }) {
   return (
     <div
       aria-hidden="true"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 24,
-        padding: "0 96px 0 120px",
-        position: "relative",
-        zIndex: 10,
-        maxWidth: 1320,
-        margin: "0 auto",
-      }}
+      className="pv-divider"
     >
       <div style={rule} />
       {variant === "pair" ? (

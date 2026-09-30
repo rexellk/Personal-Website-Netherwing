@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { Timer } from "three";
 import { loadNetherwingGLTF } from "./loadNetherwingGLTF";
+import { cappedPixelRatio, fitPerspective, onViewportResize } from "./viewport";
 
 export default function ClawScene() {
   const mountRef = useRef(null);
@@ -15,7 +16,7 @@ export default function ClawScene() {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(cappedPixelRatio());
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
@@ -26,6 +27,13 @@ export default function ClawScene() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
     camera.position.set(0, 0, 5);
+    fitPerspective(camera, W, H, { baseFov: 45 }); // must match DragonScene
+
+    const stopResize = onViewportResize((w, h) => {
+      renderer.setPixelRatio(cappedPixelRatio());
+      renderer.setSize(w, h);
+      fitPerspective(camera, w, h, { baseFov: 45 });
+    });
 
     const ambient = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambient);
@@ -129,6 +137,7 @@ export default function ClawScene() {
 
     return () => {
       cancelAnimationFrame(rafId);
+      stopResize();
       if (el.contains(renderer.domElement)) {
         el.removeChild(renderer.domElement);
       }

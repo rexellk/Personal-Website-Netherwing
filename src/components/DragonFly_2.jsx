@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { Timer } from "three";
 import { loadNetherwingGLTF } from "./loadNetherwingGLTF";
+import { cappedPixelRatio, fitPerspective, onViewportResize } from "./viewport";
 import gsap from "gsap";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -30,7 +31,7 @@ export default function DragonFly_2() {
     // ── Renderer ─────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(cappedPixelRatio());
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.setClearColor(0x000000, 0);
@@ -41,9 +42,18 @@ export default function DragonFly_2() {
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
     camera.position.set(0, 0, 5);
+    fitPerspective(camera, W, H, { baseFov: 50 });
 
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
+
+    const stopResize = onViewportResize((w, h) => {
+      renderer.setPixelRatio(cappedPixelRatio());
+      renderer.setSize(w, h);
+      fitPerspective(camera, w, h, { baseFov: 50 });
+      composer.setPixelRatio(cappedPixelRatio());
+      composer.setSize(w, h);
+    });
 
     // ── Lighting ──────────────────────────────────────────────────────────────
     scene.add(new THREE.AmbientLight(0xffffff, 0.4));
@@ -130,8 +140,9 @@ export default function DragonFly_2() {
     const timer = new Timer();
     let flyTime = 0;
 
+    let rafId;
     function animate() {
-      requestAnimationFrame(animate);
+      rafId = requestAnimationFrame(animate);
       timer.update();
       const delta = timer.getDelta();
 
@@ -150,6 +161,8 @@ export default function DragonFly_2() {
     animate();
 
     return () => {
+      cancelAnimationFrame(rafId);
+      stopResize();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);
       renderer.dispose();
     };

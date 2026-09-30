@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { cappedPixelRatio } from "./viewport";
 
 // ── Tuning knobs ──────────────────────────────────────────────────────────────
 const CORE_BRIGHTNESS  = 3.0;   // overbright multiplier for particle core (bloom feel)
@@ -95,7 +96,7 @@ export default function RiftParticles() {
     // ── Renderer ────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
     renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(cappedPixelRatio());
     renderer.setClearColor(0x000000, 0);
     el.appendChild(renderer.domElement);
     renderer.domElement.style.background = "transparent";

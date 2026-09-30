@@ -29,7 +29,7 @@ export default function Hero({ riftTriggered, modelReady }) {
     <section
       id="hero"
       style={{
-        minHeight: "100vh",
+        minHeight: "100svh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",

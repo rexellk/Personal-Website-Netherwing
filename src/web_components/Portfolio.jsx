@@ -59,6 +59,7 @@ function Cursor() {
     <>
       <div
         ref={cursorRef}
+        className="pv-cursor"
         style={{
           ...base,
           width: 8, height: 8,
@@ -68,6 +69,7 @@ function Cursor() {
       />
       <div
         ref={ringRef}
+        className="pv-cursor"
         style={{
           ...base,
           zIndex: 9998,
@@ -103,6 +105,7 @@ function ScrollVine() {
   return (
     <>
       <div
+        className="pv-scroll-vine"
         style={{
           position: "fixed", left: 28, top: 0, bottom: 0, width: 1,
           zIndex: 5, pointerEvents: "none",
@@ -110,6 +113,7 @@ function ScrollVine() {
         }}
       />
       <div
+        className="pv-scroll-vine"
         style={{
           position: "fixed", left: 28, top: 0, width: 1,
           height: `${progress * 100}vh`,
@@ -150,13 +154,7 @@ function StatusTag({ muted, setMuted }) {
   }, []);
 
   return (
-    <div
-      style={{
-        position: "fixed", right: 36, bottom: 72, zIndex: 100,
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
-        opacity: 0, animation: "pv-fadeIn 1s ease 2s forwards",
-      }}
-    >
+    <div className={`pv-status${introPending ? "" : " intro-done"}`}>
       <div>
         {/* Calls out (pulsing arcs) while muted, until the intro starts */}
         <SoundToggle muted={muted} calling={muted && introPending} onToggle={() => setMuted(m => !m)} />
