@@ -105,6 +105,20 @@ const glowTex = canvasTex(256, (g, s) => {
 });
 const nebula = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(0.55, 0.12, 0.9), blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.8 }));
 nebula.position.set(0, 0, -30); nebula.scale.set(55, 40, 1); scene.add(nebula);
+// Vortex inside the rift (owner's reference): magenta/violet spiral arms, slowly turning
+const swirlTex = canvasTex(1024, (g, s) => {
+  const img = g.createImageData(s, s), d = img.data;
+  for (let y = 0; y < s; y++) for (let x = 0; x < s; x++) {
+    const dx = (x - s / 2) / (s / 2), dy = (y - s / 2) / (s / 2), r = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+    const arm = Math.pow(0.5 + 0.5 * Math.cos(3 * a + 7 * Math.log(r + 0.05)), 3);   // 3 log-spiral arms
+    const fall = Math.max(0, 1 - r) ** 1.5, core = Math.exp(-r * 6);
+    const k = (arm * 0.8 + 0.15) * fall + core * 0.6, i = (y * s + x) * 4;
+    d[i] = 255 * Math.min(1, k * (0.85 + 0.15 * arm)); d[i + 1] = 255 * Math.min(1, k * 0.32); d[i + 2] = 255 * Math.min(1, k * (0.7 + 0.3 * (1 - arm))); d[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+});
+const swirl = new THREE.Sprite(new THREE.SpriteMaterial({ map: swirlTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
+swirl.position.set(0, 0.2, -6); swirl.scale.set(9, 9, 1); scene.add(swirl);
 
 // God-rays: a radial streak burst behind the tear. The rift fabric occludes it,
 // so the rays only exist *through the tear* — backlight, not a global glow.
@@ -136,20 +150,34 @@ const TEAR_GLSL = /* glsl */`
     return mix(mix(t_hash(i),t_hash(i+vec2(1,0)),f.x), mix(t_hash(i+vec2(0,1)),t_hash(i+vec2(1,1)),f.x), f.y); }
   float t_fbm(vec2 p){ float v=0.0,a=0.5; mat2 m=mat2(0.8,-0.6,0.6,0.8); for(int i=0;i<5;i++){ v+=a*t_noise(p); p=m*p*2.1; a*=0.5; } return v; }
   vec2 t_rot(vec2 uv,float a){ vec2 c=uv-0.5; return vec2(cos(a)*c.x-sin(a)*c.y, sin(a)*c.x+cos(a)*c.y)+0.5; }
-  // spine: jagged, non-periodic torn edge
+  // Grip: while the claws force the tear, its edges pass exactly through the two claw
+  // points (half-width uGripW at height uGripY) and it bows into a lens between them.
+  float t_gripMask(float y, float len){ return uGripK * (1.0 - smoothstep(0.0, len, abs(y - uGripY))); }
+  // spine: jagged, non-periodic torn edge (straightened where the claws hold it)
   float t_spine(float y, float time){
-    return 0.5 + (t_fbm(vec2(y*38.0, time*0.12)) - 0.5) * 0.014 + (t_noise(vec2(y*170.0, 7.0)) - 0.5) * 0.004;
+    float s = 0.5 + (t_fbm(vec2(y*38.0, time*0.12)) - 0.5) * 0.014 + (t_noise(vec2(y*170.0, 7.0)) - 0.5) * 0.004;
+    return mix(s, 0.5 + uGripC, t_gripMask(y, uLen));
   }
   // half-width: lens-shaped (tapers to points at both ends), uneven along its length
   float t_half(float y, float halfOpen, float len){
     float along = abs(y - 0.5);
     float taper = 1.0 - smoothstep(len * 0.25, len, along);
-    return halfOpen * taper * (0.7 + 0.6 * t_fbm(vec2(y*55.0, 3.0)));
+    float hw = halfOpen * taper * (0.7 + 0.6 * t_fbm(vec2(y*55.0, 3.0)));
+    // crystalline lip: straight-edged facets (piecewise-linear teeth of random size), not a smooth burn
+    float fy = y * 260.0, fi = floor(fy), ff = fract(fy);
+    float tooth = mix(t_hash(vec2(fi, 2.0)), t_hash(vec2(fi + 1.0, 2.0)), ff);
+    hw *= 0.86 + 0.28 * tooth;
+    float d = abs(y - uGripY) / max(len, 1e-4);
+    float jag = 1.0 + 0.3 * (t_fbm(vec2(y*70.0, 9.0)) - 0.5) * smoothstep(0.0, 0.25, d);   // exact at the claws, ragged away from them
+    float grip = uGripW * max(0.0, 1.0 - d * d) * jag;
+    return mix(hw, max(hw, grip), uGripK);
   }
 `;
 const riftUniforms = {
   uTime: { value: 0 }, uRiftP: { value: 0 }, uCrackP: { value: 0 }, uAngle: { value: 0.7 },
   uHalfOpen: { value: 0 }, uBurstGlow: { value: 0 }, uLen: { value: 0.03 },
+  uGripY: { value: 0.5 }, uGripW: { value: 0 }, uGripK: { value: 0 }, uGripC: { value: 0 },
+  uClaw0: { value: new THREE.Vector2(99, 99) }, uClaw1: { value: new THREE.Vector2(99, 99) }, uClawK: { value: 0 },
 };
 const rift = new THREE.Mesh(
   new THREE.PlaneGeometry(RIFT_SIZE, RIFT_SIZE),
@@ -158,15 +186,33 @@ const rift = new THREE.Mesh(
     vertexShader: /* glsl */`varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
     fragmentShader: /* glsl */`
       varying vec2 vUv;
-      uniform float uTime, uRiftP, uCrackP, uAngle, uHalfOpen, uBurstGlow, uLen;
+      uniform float uTime, uRiftP, uCrackP, uAngle, uHalfOpen, uBurstGlow, uLen, uGripY, uGripW, uGripK, uGripC, uClawK;
+      uniform vec2 uClaw0, uClaw1;
       ${TEAR_GLSL}
+      // Where a claw punches the fabric: it dents toward the claw, cracks radiate out and glow,
+      // all strongest at the claw and dying off with distance (world units).
+      vec2 clawDent(vec2 p, vec2 c){ vec2 d = p - c; float r = length(d) + 1e-4; return -d / r * 0.09 * exp(-r * 4.0) * uClawK; }
+      vec3 clawFx(vec2 p, vec2 c){
+        vec2 d = p - c; float r = length(d) + 1e-4;
+        float glow = exp(-r * 9.0) * 0.16 + exp(-r * 2.4) * 0.1;
+        float x = atan(d.y, d.x) * 1.4324;                                    // 9 cracks around the claw
+        float id = floor(x + 0.5);
+        float wob = (t_fbm(vec2(r * 6.0, id * 3.7)) - 0.5) * 0.9;             // jagged, not straight spokes
+        float line = 1.0 - smoothstep(0.0, 0.009 / r * 1.4324, abs(fract(x + wob + 0.5) - 0.5));
+        float reach = 0.18 + 0.55 * t_hash(vec2(id, 5.0));                    // each crack runs a different length
+        float crack = line * (1.0 - smoothstep(reach * 0.6, reach, r)) * smoothstep(0.015, 0.05, r);
+        float twig = (1.0 - smoothstep(0.0, 0.006 / r * 3.0, abs(fract(x * 2.1 + wob * 1.7) - 0.5)))
+                   * (1.0 - smoothstep(0.08, 0.22, r)) * step(0.55, t_hash(vec2(floor(x * 2.1 + 0.5), 9.0)));
+        return (vec3(0.9, 0.35, 0.95) * glow + vec3(1.0, 0.45, 0.85) * (crack + 0.6 * twig) * 1.6 * exp(-r * 2.2)) * uClawK;
+      }
       void main(){
         vec2 ruv = t_rot((vUv - 0.5) * ${RIFT_SIZE / 30}.0 + 0.5, uAngle);
         float spine = t_spine(ruv.y, uTime);
         float dist = abs(ruv.x - spine);
         float hw = t_half(ruv.y, uHalfOpen, uLen);
         if (hw > 0.00005 && dist < hw) discard;
-        vec2 fuv = ruv * 7.5;
+        vec2 pw = (vUv - 0.5) * ${RIFT_SIZE}.0;                                // world xy on the rift plane
+        vec2 fuv = t_rot((pw + clawDent(pw, uClaw0) + clawDent(pw, uClaw1)) / ${TEAR_SPACE}.0 + 0.5, uAngle) * 7.5;
         float cloth = clamp(t_fbm(fuv*24.0 + vec2(uTime*0.06,uTime*0.04))*0.55 + t_fbm(vec2(fuv.y*1.1,fuv.x*0.9)*20.0 - uTime*0.05)*0.45, 0.0, 1.0);
         vec3 col = mix(vec3(0.0), vec3(0.05,0.01,0.10), cloth*0.7);
         float along = abs(ruv.y - 0.5);
@@ -176,23 +222,59 @@ const rift = new THREE.Mesh(
           float shimmer = 0.75 + 0.25 * t_noise(vec2(ruv.y * 400.0, uTime * 6.0));
           float burst = 1.0 + uBurstGlow * 3.0;
           float drive = max(uRiftP, uBurstGlow * 0.8);    // rim is hot at the moment of impact
-          float core = exp(-ed*260.0) * drive * shimmer * burst * inTear;
-          float mid  = exp(-ed*70.0)  * drive * shimmer * burst * 0.6 * inTear;
+          // where the claws pinch the lip the rim is choked dark, so the claws read as silhouettes
+          float pinch = 1.0 - 0.9 * uGripK * exp(-pow((ruv.y - uGripY) / max(uLen * 0.16, 1e-4), 2.0));
+          float core = exp(-ed*260.0) * drive * shimmer * burst * inTear * pinch;
+          float mid  = exp(-ed*70.0)  * drive * shimmer * burst * 0.6 * inTear * pinch;
           float halo = exp(-ed*16.0)  * drive * 0.28 * burst * inTear;
           // ragged burnt fibres along the lip
-          float fibres = step(0.62, t_noise(vec2(ruv.y * 900.0, dist * 900.0))) * exp(-ed*120.0) * drive * inTear;
-          col += mix(vec3(0.75,0.3,1.0), vec3(1.0,0.9,1.0), core) * core * 1.6
-               + vec3(0.62,0.1,0.95) * mid * 1.6 + vec3(0.2,0.02,0.42) * halo + vec3(1.0,0.5,1.0) * fibres * 1.5;
+          float fibres = step(0.62, t_noise(vec2(ruv.y * 900.0, dist * 900.0))) * exp(-ed*120.0) * drive * inTear * pinch;
+          // crystal bevel: a band of flat-shaded facets on the lip's inner face
+          float bev = (1.0 - smoothstep(0.0, 0.03, ed)) * (0.35 + 0.65 * t_hash(floor(vec2(ruv.y * 420.0, ed * 90.0)))) * drive * inTear;
+          col += mix(vec3(0.62,0.25,0.95), vec3(1.0,0.62,0.95), core) * core * 0.65          // white-hot core cut ~60%
+               + vec3(0.85,0.22,0.75) * mid * 1.4 + vec3(0.25,0.03,0.4) * halo
+               + vec3(0.95,0.45,0.9) * fibres * 1.0 + vec3(0.55,0.18,0.8) * bev * 0.9;
         }
         if (uCrackP > 0.0 && uRiftP < 0.3) {       // hairline crack before the tear
           float crack = exp(-dist * 5600.0) * uCrackP * inTear;
           col += vec3(0.8,0.45,1.0) * crack * (3.0 + uBurstGlow * 12.0);
         }
+        if (uClawK > 0.001) col += clawFx(pw, uClaw0) + clawFx(pw, uClaw1);
         gl_FragColor = vec4(col, 1.0);
       }`,
   }),
 );
 scene.add(rift);
+
+// Claw aura: a camera-facing quad per claw — soft glow core (no rings: owner)
+const auraMat = new THREE.ShaderMaterial({
+  uniforms: { uK: { value: 0 }, uTime: { value: 0 } },
+  transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: /* glsl */`varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+  fragmentShader: /* glsl */`
+    varying vec2 vUv; uniform float uK, uTime;
+    void main(){
+      float r = length(vUv - 0.5) * 2.0;                                      // 0 centre … 1 edge
+      float core = exp(-r * 12.0) * 0.07 + exp(-r * 3.0) * 0.05;             // soft — the claw must stay readable
+      gl_FragColor = vec4(vec3(0.85, 0.5, 1.0) * core, 1.0) * uK;
+    }`,
+});
+const auras = [0, 1].map(() => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.3), auraMat); m.renderOrder = 12; scene.add(m); return m; });
+// Pixel flecks: square motes, dense at the claw and thinning out, flickering as they drift away
+const FLECK_N = 150;
+const fleckSeeds = Array.from({ length: FLECK_N * 2 }, () => ({ a: Math.random() * Math.PI * 2, u: Math.random(), s: 0.5 + Math.random(), ph: Math.random() * 50, v: 0.15 + Math.random() * 0.35 }));
+const fleckGeo = new THREE.BufferGeometry();
+fleckGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(FLECK_N * 2 * 3), 3));
+fleckGeo.setAttribute("aSize", new THREE.BufferAttribute(new Float32Array(FLECK_N * 2), 1));
+fleckGeo.setAttribute("aAlpha", new THREE.BufferAttribute(new Float32Array(FLECK_N * 2), 1));
+const flecks = new THREE.Points(fleckGeo, new THREE.ShaderMaterial({
+  transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: { uScale: { value: innerHeight / 2 } },
+  vertexShader: /* glsl */`attribute float aSize, aAlpha; varying float vA; uniform float uScale;
+    void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vA = aAlpha; gl_PointSize = aSize * uScale / -mv.z; gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: /* glsl */`varying float vA; void main(){ gl_FragColor = vec4(vec3(0.95, 0.75, 1.0) * vA, 1.0); }`,   // hard square = pixel
+}));
+flecks.frustumCulled = false; flecks.renderOrder = 13; scene.add(flecks);
 
 // Particles pulled into the crack during anticipation
 const SUCK_N = 120;
@@ -298,14 +380,18 @@ const orient = new THREE.Group(); rig.add(orient); // normalizes model facing/sc
 const wingU = { uWingGlow: { value: 0 }, uWingR: { value: 1 } };
 // Veil: until the dragon emerges, any part of it in front of the rift plane is
 // clipped unless it's inside the tear — it can only come *through* the hole.
-const veilU = { uVeil: { value: 1 }, uSealed: { value: 1 }, uHalfOpen: riftUniforms.uHalfOpen, uAngle: riftUniforms.uAngle, uLen: riftUniforms.uLen, uTime: riftUniforms.uTime };
+const veilU = { uVeil: { value: 1 }, uSealed: { value: 1 }, uHalfOpen: riftUniforms.uHalfOpen, uAngle: riftUniforms.uAngle, uLen: riftUniforms.uLen, uTime: riftUniforms.uTime,
+  uGripY: riftUniforms.uGripY, uGripW: riftUniforms.uGripW, uGripK: riftUniforms.uGripK, uGripC: riftUniforms.uGripC,
+  uClaw0: riftUniforms.uClaw0, uClaw1: riftUniforms.uClaw1, uClawR: { value: 0 } };
 function addVeil(sh, overrides) {
   Object.assign(sh.uniforms, veilU, overrides || {});
   sh.vertexShader = "varying vec3 vWorldP;\n" + sh.vertexShader.replace(
     "#include <project_vertex>", "#include <project_vertex>\n vWorldP = (modelMatrix * vec4(transformed, 1.0)).xyz;");
-  sh.fragmentShader = `uniform float uVeil, uSealed, uHalfOpen, uAngle, uLen, uTime; varying vec3 vWorldP;\n${TEAR_GLSL}\n` +
+  sh.fragmentShader = `uniform float uVeil, uSealed, uHalfOpen, uAngle, uLen, uTime, uGripY, uGripW, uGripK, uGripC, uClawR; uniform vec2 uClaw0, uClaw1; varying vec3 vWorldP;\n${TEAR_GLSL}\n` +
     sh.fragmentShader.replace("#include <clipping_planes_fragment>", `#include <clipping_planes_fragment>
-      if (uVeil > 0.5 && vWorldP.z > 0.0) {
+      // the gripping hands may curl over the lip, in front of the fabric
+      bool hand = min(distance(vWorldP.xy, uClaw0), distance(vWorldP.xy, uClaw1)) < uClawR;
+      if (uVeil > 0.5 && vWorldP.z > 0.0 && !hand) {
         if (uSealed > 0.5) discard;              // breach: nothing but the claw crosses the rift
         vec2 r = t_rot(vWorldP.xy / ${TEAR_SPACE}.0 + 0.5, uAngle);
         if (abs(r.x - t_spine(r.y, uTime)) > t_half(r.y, uHalfOpen, uLen)) discard;
@@ -417,15 +503,26 @@ function setClips(list) {
 }
 
 // Eyes: HDR red spheres on the eye bones, sized in world units
+const EYE_SINK = Number(params.get("eyeSink") || 0.008);    // world units pushed into the skull
 for (const name of ["Eye_L_047", "Eye_R_048"]) {
   const bone = model.getObjectByName(name);
   const ws = bone.getWorldScale(new THREE.Vector3()).x;
   const mat = new THREE.MeshBasicMaterial({ color: 0xe51247, transparent: true });
   mat.onBeforeCompile = (sh) => addVeil(sh);
   const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03 / ws, 16, 12), mat);
-  eye.scale.set(1.5, 0.8, 1); eye.renderOrder = 5;
+  eye.scale.set(1.3, 0.6, 0.7); eye.renderOrder = 5;
   bone.add(eye); eyeMats.push(mat); eyeMeshes.push(eye);
+  // Sunk into the socket (owner: they bulged out): push back toward the skull centre
+  const inward = headBone.getWorldPosition(new THREE.Vector3()).sub(bone.getWorldPosition(new THREE.Vector3())).normalize();
+  const local = bone.worldToLocal(bone.getWorldPosition(new THREE.Vector3()).addScaledVector(inward, EYE_SINK)).sub(bone.worldToLocal(bone.getWorldPosition(new THREE.Vector3())));
+  eye.position.copy(local);
 }
+
+const eyeGlows = eyeMeshes.map(() => {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(1.0, 0.18, 0.32), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
+  sp.scale.setScalar(0.11); sp.renderOrder = 6; scene.add(sp); return sp;
+});
+const _eg = new THREE.Vector3(), _ec = new THREE.Vector3(), _ed = new THREE.Vector3();
 
 // ─── the timeline (6.3s) ────────────────────────────────────────────────────
 const bz = breachZ;
@@ -442,8 +539,10 @@ const CAM = [
   // anticipation + breach: slow push-in on the crack; the dragon faces us behind the fabric
   { t: 0.0, v: [0.3, 0.1, 5.2,   0, 0, -2,     45, 0] },
   { t: 1.4, v: [0.3, 0.05, 4.75, 0, 0, -1.5,   43, 0.15] },
+  // the struggle: push in so the claws forcing the edges read
+  { t: 1.95, v: [0.3, -0.12, 3.75, 0, -0.15, -0.8, 40, 0.1] },
   // emergence: square-on, easing back a touch as it pushes through
-  { t: 2.3, v: [0.4, -0.15, 4.7, 0, 0.35, -0.2, 40, 0.4] },
+  { t: 2.3, v: [0.4, -0.12, 4.15, 0, 0.25, -0.3, 40, 0.35] },
   // glide round to the owner's roar angle, arriving for the roar peak (3.45)
   { t: 2.9, v: [1.3, 0.25, 4.35, 0, 0.7, 0.6,  37, 0.75] },
   { t: 3.4, v: [2.6, 0.49, 4.05, 0, 1, 1,      34, 1] },
@@ -466,7 +565,7 @@ const DRAGON = [
   { t: 4.32, v: [0, 0.42, 1.3, 0.12] },              // coils back for a beat …
   { t: 4.95, v: [BOLT_END.x, BOLT_END.y, BOLT_END.z, 0], e: eIn },   // … and bolts past the lens, accelerating
 ];
-const IMPULSES = [[1.3, 0.1], [2.55, 0.05], [3.45, 0.12], [4.34, 0.06]];
+const IMPULSES = [[1.3, 0.1], [1.68, 0.035], [2.02, 0.045], [2.36, 0.06], [2.55, 0.05], [3.45, 0.12], [4.34, 0.06]];
 
 let idleBase = 0;
 function clipPlan(t, idleClock) {
@@ -528,6 +627,111 @@ function aimHead(dir, up, w) {
     bone.updateMatrixWorld(true);
   });
 }
+
+// ── Claws forcing the rift: Blender-authored `Grip` clip (scapulae, arms, hands, fingers, chest lean,
+// tail tucked out of silhouette; frame 0 =
+// hands close, frame 12 = arms flared, palms and claws shoved outward). Scrubbed by the heave
+// curve and layered over the claw-strike pose; the tear's edges are then measured from the
+// real fingertips, so the rift only opens as far as the claws push it.
+const gripClip = gltf.animations.find((c) => c.name === "Grip");
+// Only the arm chain moves: wrists and fingers keep the original clip's curled claw pose (owner)
+const GRIP_BONE_RE = /^((Scapula|Shoulder|Elbow)_[LR]_|Tail_0[0-7]_|Spine3_M_|Chest_M_|Jaw_M_)/;   // arms, tail swept down, spine curl, jaw
+const gripTracks = gripClip.tracks.filter((tr) => tr.name.endsWith(".quaternion") && GRIP_BONE_RE.test(tr.name))
+  .map((tr) => ({ bone: model.getObjectByName(tr.name.split(".")[0]), interp: tr.createInterpolant() }));
+const GRIP_LEN = gripClip.duration;
+const _gq = new THREE.Quaternion();
+function applyGrip(u, w) {                                   // u: 0 = close … 1 = flared
+  for (const g of gripTracks) {
+    _gq.fromArray(g.interp.evaluate(u * GRIP_LEN));
+    g.bone.quaternion.slerp(_gq, w);
+  }
+  model.updateMatrixWorld(true);
+}
+// C-clamp fingers (owner's rift-grip reference): each digit reaches toward the camera over the
+// lip, then curls ~30° / 50° / 40° outward-and-back so the talons bite into the fabric's front face.
+// The thumb stays behind the fabric.
+const boneBy = (prefix) => { let b = null; model.traverse((o) => { if (!b && o.isBone && o.name.startsWith(prefix)) b = o; }); return b; };
+// Rotate `bone` in world space by the rotation taking dir a → dir b (scaled by w)
+function turnBone(bone, a, b, w) {
+  const q = new THREE.Quaternion().setFromUnitVectors(a.clone().normalize(), b.clone().normalize());
+  if (w < 1) q.slerp(new THREE.Quaternion(), 1 - w);
+  const bw = bone.getWorldQuaternion(new THREE.Quaternion());
+  const pw = bone.parent.getWorldQuaternion(new THREE.Quaternion());
+  bone.quaternion.copy(pw.invert().multiply(q).multiply(bw));
+  bone.updateMatrixWorld(true);
+}
+// Upper-arm skin helpers: ElbowUpper_* carries the upper-arm skin near the elbow but is parented
+// to the elbow with a fixed offset; in the grip pose the right one lands past the shoulder by the
+// neck, stretching the upper arm into a rod through the neck (owner). During the grip, pin each
+// helper on the upper arm (between shoulder and elbow) so the skin stays on the arm.
+const ARM_HELPERS = ["L", "R"].map((s) => ({ helper: boneBy(`ElbowUpper_${s}_`), shoulder: boneBy(`Shoulder_${s}_`), elbow: boneBy(`Elbow_${s}_`) }));
+const _h1 = new THREE.Vector3(), _h2 = new THREE.Vector3();
+const HELPER_AT = Number(params.get("helperAt") || 0.55);          // 0 = at the elbow … 1 = at the shoulder
+function followShoulder(w) {
+  for (const h of ARM_HELPERS) {
+    h.shoulder.getWorldPosition(_h1); h.elbow.getWorldPosition(_h2);
+    const target = _h2.lerp(_h1, HELPER_AT);
+    const local = h.helper.parent.worldToLocal(target.clone());
+    h.helper.position.lerp(local, w); h.helper.updateMatrixWorld(true);
+  }
+}
+const DIGITS = ["L", "R"].map((s) => ["Index", "Middle", "Pinky"].map((d) => [1, 2, 3].map((i) => boneBy(`${d}Finger${i}_${s}_`))));
+const _fa = new THREE.Vector3(), _fb = new THREE.Vector3(), _fd = new THREE.Vector3(), _fx = new THREE.Vector3(), _fq = new THREE.Quaternion();
+function clampFingers(chains, out, w) {
+  const base = _fd.set(out.x * 0.35, out.y * 0.35, 0.94).normalize();     // over the lip, toward camera
+  const axis = _fx.crossVectors(base, out).normalize();                   // curling base → out → back
+  const CURL = [45, 115, 170].map((d) => d * Math.PI / 180);                // cumulative per joint
+  for (const ch of chains) {
+    for (let j = 0; j < 2; j++) {                                          // Finger1, Finger2: aim at their child
+      ch[j].getWorldPosition(_fa); ch[j + 1].getWorldPosition(_fb);
+      const want = base.clone().applyAxisAngle(axis, CURL[j]);
+      turnBone(ch[j], _fb.sub(_fa), want, w);
+    }
+    ch[2].getWorldQuaternion(_fq);                                         // Finger3 (no child): extra 40° about the same axis
+    const q = new THREE.Quaternion().setFromAxisAngle(axis, (CURL[2] - CURL[1]) * w);
+    const pw = ch[2].parent.getWorldQuaternion(new THREE.Quaternion());
+    ch[2].quaternion.copy(pw.invert().multiply(q.multiply(_fq))); ch[2].updateMatrixWorld(true);
+  }
+}
+
+// Each hand's contact with the lip = its outermost point across the tear (wrist + talon tips)
+const HANDS = ["L", "R"].map((s) => ({ side: s === "L" ? 1 : -1,
+  pts: ["Wrist", "IndexFinger3", "MiddleFinger3", "PinkyFinger3", "ThumbFinger3"].map((n) => boneBy(`${n}_${s}_`)) }));
+// Hands turned so the knuckle line runs ALONG the tear edge and the talons curl over the lip
+// (owner: nails parallel to the rift, visibly gripping). Finger curl stays the clip's own.
+const WRISTS = ["L", "R"].map((s) => ({ side: s === "L" ? 1 : -1, wrist: boneBy(`Wrist_${s}_`),
+  idx: boneBy(`IndexFinger1_${s}_`), pnk: boneBy(`PinkyFinger1_${s}_`), mid: boneBy(`MiddleFinger1_${s}_`) }));
+const _wa = new THREE.Vector3(), _wb = new THREE.Vector3(), _wc = new THREE.Vector3(), _wd = new THREE.Vector3(), _we = new THREE.Vector3();
+const _m3a = new THREE.Matrix4(), _m3b = new THREE.Matrix4(), _wq = new THREE.Quaternion();
+function frameOf(f, k, out) {                                     // orthonormal basis from finger dir + knuckle line
+  _we.copy(k).addScaledVector(f, -k.dot(f)).normalize();
+  return out.makeBasis(f, _we, _wd.crossVectors(f, _we));
+}
+function alignHand(h, fDes, kDes, w) {
+  h.wrist.getWorldPosition(_wa); h.mid.getWorldPosition(_wb); const f = _wb.sub(_wa).normalize();
+  h.pnk.getWorldPosition(_wc); h.idx.getWorldPosition(_wa); const k = _wc.sub(_wa).normalize();
+  if (k.dot(kDes) < 0) kDes.negate();                            // keep the nearer of ±along: minimal twist
+  frameOf(f.clone(), k.clone(), _m3a); frameOf(fDes, kDes, _m3b);
+  _wq.setFromRotationMatrix(_m3b.multiply(_m3a.transpose()));
+  if (w < 1) _wq.slerp(new THREE.Quaternion(), 1 - w);
+  const bw = h.wrist.getWorldQuaternion(new THREE.Quaternion());
+  const pw = h.wrist.parent.getWorldQuaternion(new THREE.Quaternion());
+  h.wrist.quaternion.copy(pw.invert().multiply(_wq).multiply(bw));
+  h.wrist.updateMatrixWorld(true);
+}
+
+const _tip = new THREE.Vector3(), _hand = new THREE.Vector3();
+// Grip half-width of the tear in world units: heave, slip, heave harder — it fights back
+const GRIP = [   // 0 = hands close … 1 = arms flared (Grip clip time)
+  { t: 1.3, v: [0.1] },
+  { t: 1.45, v: [0.3], e: eOut },
+  { t: 1.68, v: [0.55] },                               // heave 1
+  { t: 1.8, v: [0.45], e: eOut },                       // fabric pulls back
+  { t: 2.02, v: [0.8] },                                // heave 2
+  { t: 2.12, v: [0.72], e: eOut },
+  { t: 2.36, v: [1.0] },                                // heave 3, arms fully flared
+];
+const GRIP_HEAVES = [1.68, 2.02, 2.36];
 const _corner = new THREE.Vector3(), _dir = new THREE.Vector3();
 function frustumOnRift() {
   camera.updateMatrixWorld(true);
@@ -574,8 +778,63 @@ function applyTimeline(t, idleClock, wall) {
   const camNow = smoothTrack(CAM, t);
   headBone.getWorldPosition(_hp); _toCam.set(camNow[0], camNow[1], camNow[2]).sub(_hp).normalize();
   const wAim = 1 - eIO(seg(t, 2.85, 3.2));                      // face straight out from frame 0; hands back to the roar clip
-  if (wAim > 0) aimHead(_aimDir.copy(FACE_OUT).lerp(_toCam, 0.7).normalize(), WORLD_UP, wAim);
+  const strain = bell(t, 1.5, 2.46);                               // effort shows in the head: tucked down, trembling
+  const tremor = 0.012 * Math.sin(t * 61) * Math.sin(t * 23) * eIO(seg(t, 2.2, 2.3)) * (1 - seg(t, 2.4, 2.45));
+  if (wAim > 0) aimHead(_aimDir.copy(FACE_OUT).lerp(_toCam, 0.7).normalize().add(_hp.set(tremor, -0.18 * strain + tremor, 0)).normalize(), WORLD_UP, wAim);
   if (wb > 0) aimHead(BOLT_DIR, WORLD_UP, 0.85 * wb);            // head leads along the bolt
+  // Claws on the tear's edges, forcing it open; released as the wings burst it wide
+  const kGrip = eIO(seg(t, 1.3, 1.42)) * (1 - eIO(seg(t, 2.42, 2.6)));
+  const ang = (lerp(38, 14, eIO(seg(t, 1.3, 2.5))) + Math.sin(eIO(seg(t, 1.3, 2.5)) * Math.PI) * 3) * Math.PI / 180;
+  const ca = Math.cos(ang), sa = Math.sin(ang);
+  if (kGrip > 0) {
+    applyGrip(clamp(track(GRIP, t)[0] + 1.5 * tremor, 0, 1), kGrip);   // arms shake in the final hold
+    followShoulder(kGrip);
+    WRISTS.forEach((h, i) => {                                       // knuckles along the edge, hand bent back so they ride the lip
+      const out = new THREE.Vector3(ca * h.side, -sa * h.side, 0);
+      alignHand(h, new THREE.Vector3(out.x * 0.45, out.y * 0.45, 0.9).normalize(), new THREE.Vector3(sa, ca, 0), kGrip);
+      clampFingers(DIGITS[i], out, kGrip);
+    });
+  }
+  // Tear edges from the fingertips (world → tear space: across = (cos a, −sin a), along = (sin a, cos a))
+  let acr0 = 0, acr1 = 0, alg = 0;
+  // claw FX strength: builds once the claws are on the edges, flares on each heave, gone on release
+  const kClaw = params.has("nofx") ? 0 : clamp((0.55 * eIO(seg(t, 1.4, 1.55)) + GRIP_HEAVES.reduce((a, h) => a + 0.45 * impulse(t, h, 5), 0)) * kGrip * (1 - seg(t, 2.4, 2.48)), 0, 1.2);   // only while the claws hold the edges
+  riftUniforms.uClawK.value = kClaw;
+  veilU.uClawR.value = 0.32 * kGrip;
+  auraMat.uniforms.uK.value = kClaw; auraMat.uniforms.uTime.value = t;
+  const fp = fleckGeo.attributes.position.array, fs = fleckGeo.attributes.aSize.array, fa = fleckGeo.attributes.aAlpha.array;
+  HANDS.forEach((hnd, i) => {
+    let best = -Infinity;                                   // outermost point of this hand across the tear
+    for (const b of hnd.pts) {
+      b.getWorldPosition(_hand);
+      // hands sit behind the rift plane: project along the camera ray onto it so the edge
+      // lines up with the claws as SEEN (otherwise parallax puts the lip ~50px outboard)
+      const kz = camNow[2] / (camNow[2] - _hand.z);
+      _hand.set(camNow[0] + (_hand.x - camNow[0]) * kz, camNow[1] + (_hand.y - camNow[1]) * kz, 0);
+      const a = ca * _hand.x - sa * _hand.y;
+      if (a * hnd.side > best) { best = a * hnd.side; _tip.copy(_hand); }
+    }
+    const a = ca * _tip.x - sa * _tip.y; if (i === 0) acr0 = a; else acr1 = a;
+    alg += (sa * _tip.x + ca * _tip.y) / 2;
+    _tip.x += ca * hnd.side * 0.09; _tip.y -= sa * hnd.side * 0.09;     // FX sit where the talons pierce the fabric, just outboard of the claw
+    (i === 0 ? riftUniforms.uClaw0 : riftUniforms.uClaw1).value.set(_tip.x, _tip.y);
+    auras[i].position.set(_tip.x, _tip.y, 0.05); auras[i].quaternion.copy(camera.quaternion); auras[i].visible = kClaw > 0.01;
+    for (let j = 0; j < FLECK_N; j++) {
+      const sd = fleckSeeds[i * FLECK_N + j], k = i * FLECK_N + j;
+      const life = (sd.u + t * sd.v) % 1;                                  // each fleck drifts outward, then respawns
+      const r = 0.04 + 0.62 * life * life;
+      fp[k * 3] = _tip.x + Math.cos(sd.a) * r; fp[k * 3 + 1] = _tip.y + Math.sin(sd.a) * r * 0.9; fp[k * 3 + 2] = 0.06;
+      fs[k] = 0.085 * sd.s * (1 - 0.55 * life);
+      const blink = Math.sin(t * 40 + sd.ph) > -0.2 ? 1 : 0.15;             // pixel flicker
+      fa[k] = Math.min(1, kClaw * 1.3) * (1 - life) * blink * 0.75;
+    }
+  });
+  fleckGeo.attributes.position.needsUpdate = fleckGeo.attributes.aSize.needsUpdate = fleckGeo.attributes.aAlpha.needsUpdate = true;
+  flecks.visible = kClaw > 0.01;
+  riftUniforms.uGripK.value = kGrip;
+  riftUniforms.uGripW.value = (Math.abs(acr0 - acr1) / 2 - 0.04) / TEAR_SPACE;   // edge just inside the claws: they hook over the lip
+  riftUniforms.uGripC.value = ((acr0 + acr1) / 2) / TEAR_SPACE;
+  riftUniforms.uGripY.value = 0.5 + alg / TEAR_SPACE;
 
   // Camera + impact-only shake
   const c = smoothTrack(CAM, t); c[7] = clamp(c[7], 0, 1);
@@ -590,7 +849,14 @@ function applyTimeline(t, idleClock, wall) {
   // Rift-only guard: every frustum corner must land on the rift plane (z=0, inside
   // its 120-unit extent). If not, tip the aim back toward the rift until it does.
   // Fine steps: the correction is the minimum needed, so it varies smoothly with t (no pops).
-  for (let i = 0; i < 600 && !frustumOnRift(); i++) {
+  const view = params.get("view");                               // debug turnaround for reviews: side | top | q34 | back
+  if (view) {
+    spine1.getWorldPosition(tmp2);
+    const off = { side: [5.2, 0.4, 0.3], top: [0, 5.4, 0.3], q34: [3.8, 1.1, 3.0], back: [0, 0.8, -5.2], low: [0.4, -3.6, 3.6] }[view];
+    camera.position.set(tmp2.x + off[0], tmp2.y + off[1], tmp2.z + off[2]); camera.fov = 35; camera.updateProjectionMatrix(); camera.lookAt(tmp2);
+    rift.visible = rays.visible = tearCore.visible = false;
+  }
+  for (let i = 0; i < 600 && !view && !frustumOnRift(); i++) {
     tgt.z -= 0.02; tgt.y -= 0.007; camera.lookAt(tgt); window.__camGuard = (window.__camGuard || 0) + 1;
   }
 
@@ -599,13 +865,15 @@ function applyTimeline(t, idleClock, wall) {
   const riftP = eIO(seg(t, 1.3, 2.5));
   riftUniforms.uCrackP.value = crackP;
   riftUniforms.uRiftP.value = riftP;
-  riftUniforms.uHalfOpen.value = t < 1.3 ? 0 : 0.0006 + eOut(seg(t, 1.3, 1.9)) * 0.022 + eOut(seg(t, 2.35, 2.8)) * 0.09 * (1 - 0.8 * eIO(seg(t, 4.7, 5.5)));   // settles to a readable tear for the final frame
+  // While gripped the claws set the width (uGrip*); the wing burst then rips it wide, and it
+  // settles to a readable tear for the final frame
+  riftUniforms.uHalfOpen.value = t < 1.3 ? 0 : 0.0006 + eOut(seg(t, 1.3, 1.5)) * 0.006 + eOut(seg(t, 2.4, 2.8)) * 0.1 * (1 - 0.8 * eIO(seg(t, 4.7, 5.5)));
   riftUniforms.uLen.value = t < 1.3 ? 0.02 + 0.03 * seg(t, 0.1, 1.3) : 0.05 + 0.04 * seg(t, 1.3, 1.9) + 0.07 * eOut(seg(t, 2.35, 2.8)) * (1 - 0.3 * eIO(seg(t, 4.7, 5.5)));
   veilU.uVeil.value = t < 2.8 ? 1 : 0;
   veilU.uSealed.value = t < 1.9 ? 1 : 0;                 // body stays behind the rift until it pushes through
   // claws always on: the veil still hides them until the tear opens
   riftUniforms.uAngle.value = (lerp(38, 14, riftP) + Math.sin(riftP * Math.PI) * 3) * Math.PI / 180;
-  riftUniforms.uBurstGlow.value = 0.55 * impulse(t, 1.3, 6) + 0.4 * impulse(t, 2.55, 4);
+  riftUniforms.uBurstGlow.value = 0.55 * impulse(t, 1.3, 6) + 0.4 * impulse(t, 2.55, 4) + GRIP_HEAVES.reduce((a, h) => a + 0.25 * impulse(t, h, 7), 0);
   riftUniforms.uTime.value = wall;
 
   // Suction streaks (anticipation)
@@ -625,6 +893,7 @@ function applyTimeline(t, idleClock, wall) {
   const raysI = t < 1.3 ? 0 : eOut(seg(t, 1.3, 2.0)) * (1 + 0.6 * impulse(t, 2.55, 2)) * (1 - 0.5 * seg(t, 5.0, 6.8));
   rays.material.opacity = raysI * 0.55; rays.material.rotation = wall * 0.03;
   tearCore.material.opacity = raysI * 0.25 * (1 - 0.5 * bell(t, 2.15, 2.55));
+  swirl.material.opacity = 0.55 * raysI; swirl.material.rotation = -t * 0.35;
   tearLight.intensity = raysI * lerp(6, 14, seg(t, 2.2, 2.6));   // keep the dragon a silhouette in the void early on
   clawLight.intensity = 3 * bell(t, 1.2, 1.9);
   const early = lerp(0.5, 1, seg(t, 2.2, 2.6));                  // dragon stays a silhouette inside the void
@@ -643,7 +912,16 @@ function applyTimeline(t, idleClock, wall) {
   wingU.uWingGlow.value = 0.06 + eOut(seg(t, 2.5, 2.9)) * 0.35 + 0.3 * tk;
   veinU.uVein.value = t < 2.5 ? 0.15 : 0.5 + 1.5 * Math.exp(-Math.pow((t - 3.45) * 2.5, 2));
   const eyeI = 1 + 2 * Math.exp(-Math.pow((t - 1.3) * 6, 2)) + 2.5 * Math.exp(-Math.pow((t - 3.45) * 5, 2)) + 1.5 * seg(t, 4.2, 4.5);
-  eyeMats.forEach((m) => { m.color.setHex(0xe51247).multiplyScalar(6 * eyeI); });
+  eyeMats.forEach((m) => { m.color.setHex(0xe51247).multiplyScalar(4.5 * eyeI); });
+  // Always-on soft glow just in front of each socket (sunk eyes can be hidden by the brow).
+  // Fades as the head turns away so it never shines through the skull.
+  headBone.getWorldPosition(_hp);
+  eyeMeshes.forEach((e, i) => {
+    e.getWorldPosition(_eg); _ec.copy(camera.position).sub(_eg).normalize();
+    const facing = clamp(_ed.copy(_eg).sub(_hp).normalize().dot(_ec) * 2 + 0.3, 0, 1);
+    eyeGlows[i].position.copy(_eg).addScaledVector(_ec, 0.08);
+    eyeGlows[i].material.opacity = 0.5 * facing * Math.min(1.6, 0.7 + 0.3 * eyeI) * (rig.visible ? 1 : 0);
+  });
 
   // Butterflies
   rushers.forEach((r, i) => {
