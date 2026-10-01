@@ -1,17 +1,14 @@
 import './App.css'
 import { useState, useEffect, useRef } from 'react'
 import LoadingScreen from './components/LoadingScreen'
-import DragonScene from './components/DragonScene'
-import VignetteOverlay from './components/VignetteOverlay'
-import RiftCanvas from './components/RiftCanvas'
-import ClawScene from './components/ClawScene'
-import RiftParticles from './components/RiftParticles'
+import IntroCinematic from './components/IntroCinematic'
+import { toReal } from './intro/netherwingIntro'
 import Portfolio from './web_components/Portfolio'
 import DragonFly from './components/DragonFly'
 import DragonFly_2 from './components/DragonFly_2'
 
-const ANIMATION_MS = 5000
-const FLASH_DURATION = 550
+// The cinematic lands back on its opening shot at timeline 5.3s; the hero fades back in over it
+const ANIMATION_MS = Math.round(toReal(5.3) * 1000)   // ≈ 6.2s with the slowed playback
 const AMBIENT_VOLUME  = 0.3   // ambient track volume (0.0–1.0)
 const CROSSFADE_DURATION  = 5.0   // seconds for the overlap crossfade
 const CROSSFADE_OVERLAP   = 5.0   // seconds before intro ends to start ambient
@@ -81,8 +78,6 @@ function startAmbient(r, at, fadeSeconds) {
 
 function DesktopApp() {
   const [booting, setBooting] = useState(true)
-  const [animating, setAnimating] = useState(false)
-  const [flashing, setFlashing] = useState(false)
   const [modelReady, setModelReady] = useState(false)
   const [muted, setMuted] = useState(true)
   const triggered = useRef(false)
@@ -136,7 +131,7 @@ function DesktopApp() {
     document.body.style.overflow = 'hidden'
   }, [])
 
-  // Only dragonReady (DragonScene GLB) gates the scroll trigger —
+  // Only dragonReady (the intro cinematic's GLB) gates the scroll trigger —
   // dragonRoarReady/dragonFly2Ready fire independently and must not unblock scroll early
   useEffect(() => {
     window.addEventListener('dragonReady', () => {
@@ -169,7 +164,6 @@ function DesktopApp() {
       triggered.current = true
 
       document.body.style.overflow = 'hidden'
-      setAnimating(true)
       window.dispatchEvent(new CustomEvent('riftTrigger'))
 
       triggerTimeRef.current = performance.now()
@@ -182,25 +176,16 @@ function DesktopApp() {
         else startMusic(r)
       }
 
-      // Poll until DragonScene GLB is ready, then start animation + 5s timer together
+      // Poll until the intro cinematic is ready, then start it + the hand-back timer together
       const waitForDragon = setInterval(() => {
         if (!window.startDragonAnimation) return
         clearInterval(waitForDragon)
         window.startDragonAnimation()
 
+        // The cinematic ends on its opening shot (no flash): hand back to the hero + unlock scroll
         setTimeout(() => {
-          setAnimating(false)
-          setFlashing(true)
-
-          setTimeout(() => {
-            window.riftFrozenTime = window.primaryDragonAction?.time ?? 5.0
-            if (window.hideDragon) window.hideDragon()
-            if (window.hideDragonRoar) window.hideDragonRoar()
-            window.dispatchEvent(new CustomEvent('riftFlashDone'))
-            document.body.style.overflow = ''
-          }, FLASH_DURATION * 0.08)
-
-          setTimeout(() => setFlashing(false), FLASH_DURATION)
+          if (window.hideDragonRoar) window.hideDragonRoar()
+          window.dispatchEvent(new CustomEvent('riftFlashDone'))
           document.body.style.overflow = ''
         }, ANIMATION_MS)
       }, 50)
@@ -246,26 +231,10 @@ function DesktopApp() {
       {booting && <LoadingScreen onComplete={() => setBooting(false)} />}
       <DragonFly/>
       <DragonFly_2/>
-      <RiftCanvas />
-      <VignetteOverlay />
-      <DragonScene />
-      {animating && <ClawScene />}
-      {animating && <RiftParticles />}
+      <IntroCinematic />
 
       <Portfolio modelReady={modelReady} muted={muted} setMuted={setMuted} />
 
-      {flashing && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            pointerEvents: 'none',
-            background: 'radial-gradient(ellipse at center, #ffffff 0%, #cc33ff 35%, #4400cc 75%, #000 100%)',
-            animation: `purpleFlash ${FLASH_DURATION}ms ease-out forwards`,
-          }}
-        />
-      )}
     </main>
   )
 }

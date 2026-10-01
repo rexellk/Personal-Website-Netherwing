@@ -8,6 +8,14 @@ function fmtMB(bytes) {
 export default function Hero({ riftTriggered, modelReady }) {
   const [visible, setVisible] = useState(true);
   const [glbProgress, setGlbProgress] = useState(null);
+  // Legibility shadow behind the name + lines, only once the dragon intro is done (the open rift sits behind them)
+  const [introDone, setIntroDone] = useState(false);
+
+  useEffect(() => {
+    const onDone = () => setIntroDone(true);
+    window.addEventListener('dragonSceneDone', onDone, { once: true });
+    return () => window.removeEventListener('dragonSceneDone', onDone);
+  }, []);
 
   useEffect(() => {
     if (riftTriggered) setVisible(false);
@@ -28,6 +36,7 @@ export default function Hero({ riftTriggered, modelReady }) {
   return (
     <section
       id="hero"
+      className={introDone ? "pv-hero-legible" : undefined}
       style={{
         minHeight: "100svh",
         display: "flex",
