@@ -441,7 +441,6 @@ const RIM_GLSL = (k) => `
        float rimF = smoothstep(0.72, 0.95, 1.0 - abs(dot(normalize(normal), normalize(vViewPosition))));   // thin edge only
        totalEmissiveRadiance += uRimCol * rimF * uRim * ${k};`;
 let mixer, actions = {}, eyeMats = [], eyeMeshes = [], headBone, bones = [];
-let breachZ = -2.0;
 const wingMats = [];
 
 const draco = new DRACOLoader().setDecoderPath(opts.dracoPath || "https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
@@ -518,21 +517,6 @@ for (const clip of gltf.animations) {
 }
 for (const a of Object.values(actions)) { a.play(); a.weight = 0; }
 
-// Skill03 has a sharp 12° wing flick (impact recoil) at clip time 1.30–1.47. Scrubbed slowly through the
-// pull it reads as a wing twitch mid-grip, so the wing tracks are held at their pre-flick pose there.
-const S03_FLICK = [1.27, 1.5];
-const s03Clip = gltf.animations.find((c) => c.name.includes("Skill03"));
-const wingHold = s03Clip.tracks.filter((tr) => /^Wing_/.test(tr.name) && tr.times.length > 2 && /\.(quaternion|position)$/.test(tr.name))
-  .map((tr) => { const [name, prop] = tr.name.split("."); return { bone: model.getObjectByName(name), prop, v: Array.from(tr.createInterpolant().evaluate(S03_FLICK[0])) }; });
-const _wh = new THREE.Quaternion(), _whp = new THREE.Vector3();
-function holdWingFlick(list) {
-  const s03 = list.find((c) => c[0] === "Skill03");
-  if (!s03 || s03[2] <= 0 || s03[1] <= S03_FLICK[0] || s03[1] >= S03_FLICK[1]) return;
-  for (const h of wingHold) {
-    if (h.prop === "quaternion") h.bone.quaternion.slerp(_wh.fromArray(h.v), s03[2]);
-    else h.bone.position.lerp(_whp.fromArray(h.v), s03[2]);
-  }
-}
 function setClips(list) {
   for (const a of Object.values(actions)) a.weight = 0;
   for (const [k, time, w] of list) { actions[k].time = time; actions[k].weight = w; }
@@ -552,27 +536,24 @@ function setClips(list) {
   orient.updateMatrixWorld(true);
   orient.position.sub(v("Spine1_M_016"));
   orient.updateMatrixWorld(true);
-  // How far forward does the claw reach during Skill03? Place the dragon so that
-  // front-most non-wing bone pokes ~0.35 through the rift plane (z = 0).
-  let maxZ = -Infinity;
-  for (let i = 0; i <= 20; i++) {
-    setClips([["Skill03", (actions.Skill03.getClip().duration * i) / 20, 1]]); model.updateMatrixWorld(true);
-    for (const b of bones) if (!/Wing|Tail|Feather/.test(b.name)) maxZ = Math.max(maxZ, b.getWorldPosition(p).z);
-  }
-  breachZ = 0.35 - maxZ;
   wingU.uWingR.value = 2.6 / orient.scale.x;
-  console.log("breachZ", breachZ.toFixed(2), "claw reach", maxZ.toFixed(2));
 }
 
 // Eyes: HDR red spheres on the eye bones, sized in world units
-const EYE_SINK = Number(params.get("eyeSink") || 0.008);    // world units pushed into the skull
+// Owner (twice): the eyes bulged out of the sockets. The eye bone's local x points straight out of the face,
+// and the old 1.3 squash there made each eye a capsule sticking forward; now a flat almond lens sitting in
+// the socket (depth 0.6), 20% smaller, with a smaller glow. Sinking it deeper instead hid it at 3/4 views.
+const EYE_SINK = Number(params.get("eyeSink") || 0);         // world units pushed into the skull
+const EYE_R = Number(params.get("eyeR") || 0.024);           // eyeball radius (world units, before the squash below)
+const EYE_GLOW = Number(params.get("eyeGlow") || 0.09);      // glow sprite size
+const EYE_DEPTH = Number(params.get("eyeDepth") || 0.6);     // squash along the eye bone's local x (out of the face)
 for (const name of ["Eye_L_047", "Eye_R_048"]) {
   const bone = model.getObjectByName(name);
   const ws = bone.getWorldScale(new THREE.Vector3()).x;
   const mat = new THREE.MeshBasicMaterial({ color: 0xe51247, transparent: true });
   mat.onBeforeCompile = (sh) => addVeil(sh);
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03 / ws, 16, 12), mat);
-  eye.scale.set(1.3, 0.6, 0.7); eye.renderOrder = 5;
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(EYE_R / ws, 16, 12), mat);
+  eye.scale.set(EYE_DEPTH, 0.6, 0.7); eye.renderOrder = 5;
   bone.add(eye); eyeMats.push(mat); eyeMeshes.push(eye);
   // Sunk into the socket (owner: they bulged out): push back toward the skull centre
   const inward = headBone.getWorldPosition(new THREE.Vector3()).sub(bone.getWorldPosition(new THREE.Vector3())).normalize();
@@ -582,14 +563,15 @@ for (const name of ["Eye_L_047", "Eye_R_048"]) {
 
 const eyeGlows = eyeMeshes.map(() => {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(1.0, 0.31, 0.82), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
-  sp.scale.setScalar(0.11); sp.renderOrder = 6; scene.add(sp); return sp;
+  sp.scale.setScalar(EYE_GLOW); sp.renderOrder = 6; scene.add(sp); return sp;
 });
 const _eg = new THREE.Vector3(), _ec = new THREE.Vector3(), _ed = new THREE.Vector3();
 
 // ─── the timeline (6.3s) ────────────────────────────────────────────────────
-const bz = breachZ;
-const DX = 0.3;
-const eOut2 = (u) => 1 - (1 - u) * (1 - u);
+const DX = 0.12;          // the dragon and the tear share a midline (the camera sits a touch right of it)
+// Lunge through the tear: smootherstep, so it starts from rest (eOut2 started at full speed and jolted the
+// whole body, ~60× the median acceleration) and peaks in acceleration mid-downstroke (~2.46), driven by the wings
+const eLunge = (u) => u * u * u * (u * (6 * u - 15) + 10);
 // Bolt axis: straight at the roar camera, shifted just over its left shoulder so the dragon
 // fills the frame and punches past the lens instead of flying through it.
 const BOLT_X = Number(params.get("boltX") || 4.4), BOLT_Y = Number(params.get("boltY") || 1.6);
@@ -615,14 +597,16 @@ const CAM = [
   // … then pans home to the exact opening shot, flat on the rift. The intro ends here.
   { t: 5.3, v: [0.3, 0.1, 5.2,   0, 0, -2,     45, 0] },        // lands, then holds still to the end
 ];
+// Phase 2 body mechanics (coil, strike, pull, burst) are all in the RiftOpen clip; this track only
+// carries the dragon up to the fabric and, once the wings burst the tear, through it. Same keys as
+// RIG in _blender/build_riftopen.py (the clip's claws are solved against them).
 const DRAGON = [
   { t: 0.0, v: [DX, 0, -2.6, 0] },
   { t: 0.8, v: [DX, 0, -2.3, 0] },
-  { t: 1.05, v: [DX, 0, -2.2, 0] },
-  { t: 1.3, v: [DX, 0, bz, 0], e: eIO },          // eases into the breach (eIn slammed to a dead stop: choppy)
-  { t: 1.8, v: [DX, 0, bz - 0.1, 0] },
-  { t: 2.42, v: [DX, 0, bz - 0.1, 0] },              // holds behind the rift while the tear widens …
-  { t: 2.68, v: [0.12, 0.12, 0.55, -0.06], e: eOut2 }, // … then lunges through once it's open — short and weighty
+  { t: 1.05, v: [DX, 0, -2.0, 0] },
+  { t: 1.3, v: [DX, 0, -1.3, 0], e: eIO },          // closes on the fabric under the claw strike
+  { t: 2.40, v: [DX, 0, -1.3, 0] },                  // holds while the claws pull the tear open …
+  { t: 2.68, v: [0.12, 0.12, 0.55, -0.06], e: eLunge }, // … then lunges through once it's open — short and weighty
   { t: 3.4, v: [0.05, 0.35, 1.05, -0.08] },           // creeps forward into the roar
   { t: 4.2, v: [0, 0.5, 1.4, -0.05] },
   { t: 4.32, v: [0, 0.42, 1.3, 0.12] },              // coils back for a beat …
@@ -633,19 +617,21 @@ const DRAGON = [
 const IMPULSES = [[0.5, 0.015], [0.9, 0.025], [4.72, 0.04], [2.55, 0.05], [3.45, 0.12], [4.34, 0.06]];
 
 let idleBase = 0;
+// RiftOpen (Blender, _blender/build_riftopen.py) is the whole rift opening as one authored clip, played
+// in real timeline time from RO_T0: idle → coil → claw strike → second claw → load → pull → wing burst.
+// It starts on the StandBy pose and ends on Skill02 frame 14, so both hand-offs are pose-matched.
+const RO_T0 = 0.7, RO_END = RO_T0 + actions.RiftOpen.getClip().duration;
 function clipPlan(t, idleClock) {
-  const w03 = eIO(seg(t, 0.7, 0.95)), w02 = eIO(seg(t, 2.36, 2.6)), w22 = eIO(seg(t, 2.8, 3.25));
+  const wRO = eIO(seg(t, RO_T0, 0.98)), w02 = eIO(seg(t, 2.62, RO_END)), w22 = eIO(seg(t, 2.8, 3.25));
   const wFl = eIO(seg(t, 4.05, 4.3));                          // Flight takes over for the launch
-  const s03 = t < 1.3 ? 0.35 * seg(t, 0.9, 1.3) : 0.35 + 1.9 * eIO(seg(t, 1.3, 2.4));   // ramps up (eOut started at full speed: wrist whip); still drifting at the burst, never a freeze
-  // starts with its weight ramp (w02, 2.36) so its fast opening is masked while it fades in; an eIO here
-  // put the clip's wing whip at full weight (measured 3× the accel)
-  const s02 = 0.9 * eOut(seg(t, 2.36, 2.72));   // accelerates in (eOut started the burst at full speed)
+  // Skill02 runs in step with the clip's last stretch (frames 4 → 14), then on at its own speed
+  const s02 = t < RO_END ? lerp(4, 14, seg(t, 2.52, RO_END)) / 24 : 14 / 24 + (t - RO_END);
   // Roar: head-thrust / jaw-open peak lands at 3.45, then held
   const s22 = t < 3.45 ? 0.3 + 0.3 * seg(t, 2.95, 3.45) : 0.6 + 0.5 * seg(t, 3.45, 4.2);
   const crown = 0.55 * eIO(seg(t, 2.85, 3.25));                // wings held in the upstroke "crown"
   return [
-    ["StandBy", (idleClock + t) % 3.0, 1 - w03],
-    ["Skill03", s03, w03 * (1 - w02)],
+    ["StandBy", (idleClock + t) % 3.0, 1 - wRO],
+    ["RiftOpen", clamp(t - RO_T0, 0, RO_END - RO_T0), wRO * (1 - w02)],
     ["Skill02", s02, w02 * (1 - w22)],
     ["Skill22", s22, w22 * (1 - crown) * (1 - wFl)],
     ["Flap", 0.30, w22 * crown * (1 - wFl)],
@@ -663,8 +649,7 @@ const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), tmp3 = new THREE.Ve
 const overlay = (css) => { const d = document.createElement("div"); d.style.cssText = "position:absolute;left:0;right:0;pointer-events:none;" + css; container.appendChild(d); return d; };
 const barTop = overlay("top:0;height:0;background:#000;z-index:2;"), barBot = overlay("bottom:0;height:0;background:#000;z-index:2;");
 const flashEl = overlay("top:0;bottom:0;opacity:0;z-index:3;background:radial-gradient(ellipse at center,#fff 0%,#f0c9e4 22%,#8f78c4 55%,#0c0716 100%);");
-const spine1 = model.getObjectByName("Spine1_M_016"), neck0 = model.getObjectByName("Neck_M_020");
-const _s1 = new THREE.Vector3(), _s2 = new THREE.Vector3();
+const spine1 = model.getObjectByName("Spine1_M_016");
 // Procedural head aim, spread over the neck so it bends instead of snapping at the skull.
 // Head-local snout/top axes are measured once in the StandBy pose.
 const FACE_OUT = new THREE.Vector3(0, 0, 1), WORLD_UP = new THREE.Vector3(0, 1, 0);
@@ -698,39 +683,7 @@ function aimHead(dir, up, w) {
   });
 }
 
-// ── Claws forcing the rift: Blender-authored `Grip` clip (scapulae, arms, hands, fingers, chest lean,
-// tail tucked out of silhouette; frame 0 =
-// hands close, frame 12 = arms flared, palms and claws shoved outward). Scrubbed by the heave
-// curve and layered over the claw-strike pose; the tear's edges are then measured from the
-// real fingertips, so the rift only opens as far as the claws push it.
-const gripClip = gltf.animations.find((c) => c.name === "Grip");
-// Only the arm chain moves: wrists and fingers keep the original clip's curled claw pose (owner)
-// No jaw: opening it in the head-on grip shot reads as a second mini mouth under the snout (owner)
-const GRIP_BONE_RE = /^((Scapula|Shoulder|Elbow)_[LR]_|Tail_0[0-7]_|Spine3_M_|Chest_M_)/;   // arms, tail swept down, spine curl, jaw
-const gripTracks = gripClip.tracks.filter((tr) => tr.name.endsWith(".quaternion") && GRIP_BONE_RE.test(tr.name))
-  .map((tr) => ({ bone: model.getObjectByName(tr.name.split(".")[0]), interp: tr.createInterpolant() }));
-const GRIP_LEN = gripClip.duration;
-const _gq = new THREE.Quaternion();
-function applyGrip(u, w) {                                   // u: 0 = close … 1 = flared
-  for (const g of gripTracks) {
-    _gq.fromArray(g.interp.evaluate(u * GRIP_LEN));
-    g.bone.quaternion.slerp(_gq, w);
-  }
-  model.updateMatrixWorld(true);
-}
-// C-clamp fingers (owner's rift-grip reference): each digit reaches toward the camera over the
-// lip, then curls ~30° / 50° / 40° outward-and-back so the talons bite into the fabric's front face.
-// The thumb stays behind the fabric.
 const boneBy = (prefix) => { let b = null; model.traverse((o) => { if (!b && o.isBone && o.name.startsWith(prefix)) b = o; }); return b; };
-// Rotate `bone` in world space by the rotation taking dir a → dir b (scaled by w)
-function turnBone(bone, a, b, w) {
-  const q = new THREE.Quaternion().setFromUnitVectors(a.clone().normalize(), b.clone().normalize());
-  if (w < 1) q.slerp(new THREE.Quaternion(), 1 - w);
-  const bw = bone.getWorldQuaternion(new THREE.Quaternion());
-  const pw = bone.parent.getWorldQuaternion(new THREE.Quaternion());
-  bone.quaternion.copy(pw.invert().multiply(q).multiply(bw));
-  bone.updateMatrixWorld(true);
-}
 // Upper-arm skin helpers: ElbowUpper_* carries the upper-arm skin near the elbow but is parented
 // to the elbow with a fixed offset; in the grip pose the right one lands past the shoulder by the
 // neck, stretching the upper arm into a rod through the neck (owner). During the grip, pin each
@@ -746,166 +699,10 @@ function followShoulder(w) {
     h.helper.position.lerp(local, w); h.helper.updateMatrixWorld(true);
   }
 }
-const DIGITS = ["L", "R"].map((s) => ["Index", "Middle", "Pinky"].map((d) => [1, 2, 3].map((i) => boneBy(`${d}Finger${i}_${s}_`))));
-const _fa = new THREE.Vector3(), _fb = new THREE.Vector3(), _fd = new THREE.Vector3(), _fx = new THREE.Vector3(), _fq = new THREE.Quaternion();
-function clampFingers(chains, out, w) {
-  const base = _fd.set(out.x * 0.35, out.y * 0.35, 0.94).normalize();     // over the lip, toward camera
-  const axis = _fx.crossVectors(base, out).normalize();                   // curling base → out → back
-  const CURL = [45, 115, 170].map((d) => d * Math.PI / 180);                // cumulative per joint
-  for (const ch of chains) {
-    for (let j = 0; j < 2; j++) {                                          // Finger1, Finger2: aim at their child
-      ch[j].getWorldPosition(_fa); ch[j + 1].getWorldPosition(_fb);
-      const want = base.clone().applyAxisAngle(axis, CURL[j]);
-      turnBone(ch[j], _fb.sub(_fa), want, w);
-    }
-    ch[2].getWorldQuaternion(_fq);                                         // Finger3 (no child): extra 40° about the same axis
-    const q = new THREE.Quaternion().setFromAxisAngle(axis, (CURL[2] - CURL[1]) * w);
-    const pw = ch[2].parent.getWorldQuaternion(new THREE.Quaternion());
-    ch[2].quaternion.copy(pw.invert().multiply(q.multiply(_fq))); ch[2].updateMatrixWorld(true);
-  }
-}
-
 // Each hand's contact with the lip = its outermost point across the tear (wrist + talon tips)
 const HANDS = ["L", "R"].map((s) => ({ side: s === "L" ? 1 : -1,
   pts: ["Wrist", "IndexFinger3", "MiddleFinger3", "PinkyFinger3", "ThumbFinger3"].map((n) => boneBy(`${n}_${s}_`)) }));
-// Hands turned so the knuckle line runs ALONG the tear edge and the talons curl over the lip
-// (owner: nails parallel to the rift, visibly gripping). Finger curl stays the clip's own.
-const WRISTS = ["L", "R"].map((s) => ({ side: s === "L" ? 1 : -1, wrist: boneBy(`Wrist_${s}_`),
-  idx: boneBy(`IndexFinger1_${s}_`), pnk: boneBy(`PinkyFinger1_${s}_`), mid: boneBy(`MiddleFinger1_${s}_`) }));
-const _wa = new THREE.Vector3(), _wb = new THREE.Vector3(), _wc = new THREE.Vector3(), _wd = new THREE.Vector3(), _we = new THREE.Vector3();
-const _m3a = new THREE.Matrix4(), _m3b = new THREE.Matrix4(), _wq = new THREE.Quaternion();
-function frameOf(f, k, out) {                                     // orthonormal basis from finger dir + knuckle line
-  _we.copy(k).addScaledVector(f, -k.dot(f)).normalize();
-  return out.makeBasis(f, _we, _wd.crossVectors(f, _we));
-}
-function alignHand(h, fDes, kDes, w) {
-  h.wrist.getWorldPosition(_wa); h.mid.getWorldPosition(_wb); const f = _wb.sub(_wa).normalize();
-  h.pnk.getWorldPosition(_wc); h.idx.getWorldPosition(_wa); const k = _wc.sub(_wa).normalize();
-  if (k.dot(kDes) < 0) kDes.negate();                            // keep the nearer of ±along: minimal twist
-  frameOf(f.clone(), k.clone(), _m3a); frameOf(fDes, kDes, _m3b);
-  _wq.setFromRotationMatrix(_m3b.multiply(_m3a.transpose()));
-  if (w < 1) _wq.slerp(new THREE.Quaternion(), 1 - w);
-  const bw = h.wrist.getWorldQuaternion(new THREE.Quaternion());
-  const pw = h.wrist.parent.getWorldQuaternion(new THREE.Quaternion());
-  h.wrist.quaternion.copy(pw.invert().multiply(_wq).multiply(bw));
-  h.wrist.updateMatrixWorld(true);
-}
-
-// ── Life during the pull (animator review; owner: "body frozen while the arms spread", but stay put).
-// One inhale-and-drive, wings cocked back for the burst, scapulae loading, neck trailing the chest
-// with the head stabilised by aimHead. Every layer is a single slow ease (no sines, no noise: torso
-// motion moves the hands, and the hands drive the tear edges), additive on the grip pose, no spine yaw.
-const LIFE = { chest: model.getObjectByName("Chest_M_019"), sp3: model.getObjectByName("Spine3_M_018"), sp1: spine1,
-  neck0, neck2: model.getObjectByName("Neck2_M_044"),
-  scap: ["L", "R"].map((s) => boneBy(`Scapula_${s}_`)),
-  arms: ["L", "R"].map((s) => ({ sh: boneBy(`Shoulder_${s}_`), el: boneBy(`Elbow_${s}_`), wr: boneBy(`Wrist_${s}_`) })),
-  wings: ["L", "R"].map((s) => ({ sh: boneBy(`Wing_Shoulder_${s}_`), el: boneBy(`Wing_Elbow_${s}_`), wr: boneBy(`Wing_Wrist_${s}_`) })) };
-const ELBOW_POLE = new THREE.Vector3(0, -1, -Number(params.get("poleBack") || 0.35)).normalize();   // elbows point down and a little back
-const UNROLL = Number(params.get("unroll") || 1);
-const AX_X = new THREE.Vector3(1, 0, 0), AX_Y = new THREE.Vector3(0, 1, 0), AX_Z = new THREE.Vector3(0, 0, 1);
-const _la = new THREE.Vector3(), _lb = new THREE.Vector3(), _lc = new THREE.Vector3(), _lq = new THREE.Quaternion();
-const DEG = Math.PI / 180;
-// Some of these bones (Spine1, Chest) aren't keyed by every clip, so the mixer doesn't reset them each
-// frame and an additive offset would pile up frame after frame (then snap back when a clip that keys
-// them blends in). Remember each bone's pre-life rotation and restore it at the top of every frame.
-const lifeBase = new Map();
-function restoreLife() { for (const [b, q] of lifeBase) b.quaternion.copy(q); lifeBase.clear(); }
-function rotWorld(bone, axis, ang) {                              // world-space axis-angle on a bone
-  if (Math.abs(ang) < 1e-5) return;
-  if (!lifeBase.has(bone)) lifeBase.set(bone, bone.quaternion.clone());
-  _lq.setFromAxisAngle(axis, ang);
-  const bw = bone.getWorldQuaternion(new THREE.Quaternion());
-  const pw = bone.parent.getWorldQuaternion(new THREE.Quaternion());
-  bone.quaternion.copy(pw.invert().multiply(_lq).multiply(bw));
-  bone.updateMatrixWorld(true);
-}
-// Body pushes UP between its planted claws through the pull (owner: body looked detached from the arms).
-// The hands are pinned where the grip put them, so the arms bend to absorb it (see armIK)
-const RISE = Number(params.get("rise") || 0.1);
-const bodyRise = (t) => RISE * eIO(seg(t, 1.4, 2.3)) * (1 - eIO(seg(t, 2.40, 2.68)));
-const _ik = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
-function armIK(arm, target, w) {
-  const [S, E, W, T] = _ik;
-  arm.sh.getWorldPosition(S); arm.el.getWorldPosition(E); arm.wr.getWorldPosition(W);
-  T.copy(W).lerp(target, w);
-  const L1 = E.distanceTo(S), L2 = W.distanceTo(E);
-  const ax = T.clone().sub(S); const d = Math.min(ax.length(), (L1 + L2) * 0.999); ax.normalize();
-  const pole = E.clone().sub(S); pole.addScaledVector(ax, -pole.dot(ax));
-  if (pole.lengthSq() < 1e-10) return;
-  pole.normalize();
-  const x = (L1 * L1 - L2 * L2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, L1 * L1 - x * x));
-  const En = S.clone().addScaledVector(ax, x).addScaledVector(pole, h);
-  turnBone(arm.sh, E.clone().sub(S), En.clone().sub(S), 1);
-  arm.el.getWorldPosition(E); arm.wr.getWorldPosition(W);
-  turnBone(arm.el, W.clone().sub(E), T.clone().sub(E), 1);
-}
-const breath = (t) => eIO(seg(t, 1.35, 1.9)) - 0.3 * eIO(seg(t, 1.9, 2.4));   // fills as the claws settle, stays proud
-const _pin = [new THREE.Vector3(), new THREE.Vector3()];
-function applyLife(t, w) {
-  if (w <= 0) return;
-  // claw targets: where the grip pose put the wrists, minus the body rise (the claws stay on the lip)
-  const rise = params.has("nopin") ? 0 : bodyRise(t);
-  LIFE.arms.forEach((arm, i) => { arm.wr.getWorldPosition(_pin[i]); _pin[i].y -= rise; });
-  const a = breath(t) * w;
-  // 1. torso inhale/drive: chest top tips back, sternum lifts (pitch only)
-  rotWorld(LIFE.sp1, AX_X, -0.75 * DEG * a);
-  rotWorld(LIFE.sp3, AX_X, -1.5 * DEG * a);
-  rotWorld(LIFE.chest, AX_X, -3 * DEG * a);
-  // 3. scapulae: draw back toward the spine, then rise and bunch as the arms take the load
-  // (shoulders up, head sunk between them: the power posture, and it reads head-on)
-  const load = eIO(seg(t, 1.3, 1.8)) * w, power = eIO(seg(t, 1.5, 2.2)) * w;
-  for (const sc of LIFE.scap) {
-    const side = Math.sign(sc.children[0].getWorldPosition(_la).x - sc.getWorldPosition(_lb).x) || 1;
-    rotWorld(sc, AX_Y, side * 3 * DEG * load);
-    rotWorld(sc, AX_Z, side * 3.5 * DEG * power);
-  }
-  // 2. wings cocked up/back and folded a touch tighter: anticipation for the Skill02 burst
-  const cock = eIO(seg(t, 1.65, 2.36)) * w;
-  for (const wg of LIFE.wings) {
-    const side = Math.sign(wg.el.getWorldPosition(_la).x - wg.sh.getWorldPosition(_lb).x) || 1;
-    rotWorld(wg.sh, AX_Z, side * 7 * DEG * cock);
-    rotWorld(wg.sh, AX_Y, side * 5 * DEG * cock);
-    wg.sh.getWorldPosition(_la); wg.el.getWorldPosition(_lb); wg.wr.getWorldPosition(_lc);
-    const u = _lb.clone().sub(_la).normalize(), f = _lc.clone().sub(_lb).normalize();
-    const h = u.cross(f); if (h.lengthSq() > 1e-8) rotWorld(wg.el, h.normalize(), 1.5 * DEG * cock);   // barely folds: the silhouette should grow into the burst
-  }
-  // 6. elbows swung DOWN (owner: the arms read as rods detached from the body). Head-on, the elbow bend
-  // pointed at/away from the lens, so shoulder→elbow→claw was one straight horizontal line. Rotating the
-  // arm chain about the shoulder→wrist axis keeps the wrist (and so the tear edge) exactly where it is
-  // and swings the elbow below the shoulder line: the reference's wide "W", joints visibly working.
-  const swing = (params.has("noswing") ? 0 : 1) * eIO(seg(t, 1.25, 1.65)) * w;
-  if (swing > 0) for (const arm of LIFE.arms) {
-    arm.sh.getWorldPosition(_la); arm.el.getWorldPosition(_lb); arm.wr.getWorldPosition(_lc);
-    const ax = _lc.clone().sub(_la).normalize();
-    const e = _lb.clone().sub(_la); e.addScaledVector(ax, -e.dot(ax));
-    const d = ELBOW_POLE.clone().addScaledVector(ax, -ELBOW_POLE.dot(ax));
-    if (e.lengthSq() < 1e-8 || d.lengthSq() < 1e-8) continue;
-    e.normalize(); d.normalize();
-    const ang = Math.atan2(e.clone().cross(d).dot(ax), e.dot(d));
-    rotWorld(arm.sh, ax, ang * swing);
-    // the swing also rolled the forearm, turning its elbow spur from pointing back (hidden) to hanging
-    // straight down like a rod; un-roll the forearm about its own axis (elbow and wrist stay put)
-    arm.el.getWorldPosition(_lb); arm.wr.getWorldPosition(_lc);
-    rotWorld(arm.el, _lc.clone().sub(_lb).normalize(), -ang * swing * UNROLL);
-  }
-  // 7. two-bone IK: put each wrist back on its pinned target (shoulder fixed, elbow stays in its current
-  // bend plane), so everything the torso does above (rise, scapulae, chest) shows up as the arm joints
-  // working, not as the claws sliding along the lip
-  LIFE.arms.forEach((arm, i) => armIK(arm, _pin[i], w));
-  // 4. neck follows the chest 0.1s late, pitching forward; aimHead keeps the head itself still
-  const an = breath(t - 0.1) * w * 3 * DEG;
-  rotWorld(LIFE.neck0, AX_X, 0.6 * an);
-  rotWorld(LIFE.neck2, AX_X, 0.3 * an);
-}
-
 const _tip = new THREE.Vector3(), _hand = new THREE.Vector3();
-// One confident pull (owner: no struggle — the heave/slip back-and-forth read as choppy when slowed):
-// hands close → arms flared along a single smooth ease.
-const GRIP = [   // 0 = hands close … 1 = arms flared (Grip clip time)
-  { t: 1.3, v: [0.1] },
-  { t: 2.4, v: [1.0] },
-];
-const GRIP_HEAVES = [];   // no heaves any more (kept so the FX/camera code reads the same)
 const _corner = new THREE.Vector3(), _dir = new THREE.Vector3();
 function frustumOnRift() {
   camera.updateMatrixWorld(true);
@@ -929,17 +726,15 @@ function fitFov(baseFov) {
   return Math.min(80, (Math.atan(Math.tan((baseFov * Math.PI) / 360) * (1.25 / aspect)) * 360) / Math.PI);
 }
 function applyTimeline(t, idleClock, wall) {
-  restoreLife();
   // Clips + wings
-  const plan = clipPlan(t, idleClock);
-  setClips(plan); holdWingFlick(plan);
+  setClips(clipPlan(t, idleClock));
   // Body rises on each downstroke (beat phase matches the Flap clip, 18 frames/beat)
   const beat = 2 * Math.PI * (flapTime(t) * 24) / 18;
   const lift = -Math.sin(beat + 0.45 * Math.sin(beat)) * eIO(seg(t, 4.05, 4.3));
 
   // Dragon transform (bobs with each wingbeat)
   const d = track(DRAGON, t);
-  rig.position.set(d[0], d[1] + lift * 0.1 + bodyRise(t) + (t === 0 ? Math.sin(wall * 1.3) * 0.03 : 0), d[2]);
+  rig.position.set(d[0], d[1] + lift * 0.1 + (t === 0 ? Math.sin(wall * 1.3) * 0.03 : 0), d[2]);
   // Body stays upright and square to the rift, in line with the face (owner: no roll)
   rig.rotation.z = 0;
   // Bolt: body turns onto the bolt axis (yaw + pitch)
@@ -949,42 +744,26 @@ function applyTimeline(t, idleClock, wall) {
   rig.rotation.x = d[3] + lift * 0.07 - Math.atan2(BOLT_DIR.y, Math.hypot(BOLT_DIR.x, BOLT_DIR.z)) * wb;
   rig.visible = t < 5.05;
   rig.updateMatrixWorld(true);
-  // Square the body to the rift from frame 0: measure the spine's heading (the claw strike turns
-  // it ~43°) and cancel it, so body and face are one straight line. Released as the rift fully
-  // opens so the owner's 2.5s pose is untouched.
-  const wSquare = 1 - eIO(seg(t, 2.3, 2.65));   // ≥0.3s release: up to ~43° of yaw unwinds here
-  if (wSquare > 0) {
-    spine1.getWorldPosition(_s1); neck0.getWorldPosition(_s2);
-    rig.rotation.y -= Math.atan2(_s2.x - _s1.x, _s2.z - _s1.z) * wSquare;
-    rig.updateMatrixWorld(true);
-  }
+  // (RiftOpen is authored square to the rift and turns into Skill02's heading itself during the burst)
   // Breach + emergence: the face stays square to the rift, looking straight out at us
   const camNow = smoothTrack(CAM, t);
-  // Claws on the tear's edges, forcing it open; released as the wings burst it wide
-  const kGrip = eIO(seg(t, 1.16, 1.6)) * (1 - eIO(seg(t, 2.46, 2.72)));   // ease in/out; let go once the wings have the tear (a 0.12s blend made the claws snap)
+  // Claws on the tear's edges (the clip puts them there: the strike lands 1.27/1.36, the claws let go
+  // 2.38–2.56 as the wings take over). kGrip only drives the tear-from-claws coupling and the claw FX.
+  const kGrip = eIO(seg(t, 1.2, 1.45)) * (1 - eIO(seg(t, 2.38, 2.5)));
   const ang = (lerp(38, 14, eIO(seg(t, 1.3, 2.5))) + Math.sin(eIO(seg(t, 1.3, 2.5)) * Math.PI) * 3) * Math.PI / 180;
   const ca = Math.cos(ang), sa = Math.sin(ang);
-  if (kGrip > 0) {
-    applyGrip(smoothTrack(GRIP, t)[0], kGrip);                      // one smooth ease-in-out pull
-    if (!params.has("nolife")) applyLife(t, 1 - eIO(seg(t, 2.40, 2.68)));   // breath, wings, scapulae, neck (off as the burst takes over)
-    WRISTS.forEach((h, i) => {                                       // knuckles along the edge, hand bent back so they ride the lip
-      const out = new THREE.Vector3(ca * h.side, -sa * h.side, 0);
-      alignHand(h, new THREE.Vector3(out.x * 0.45, out.y * 0.45, 0.9).normalize(), new THREE.Vector3(sa, ca, 0), kGrip);
-      clampFingers(DIGITS[i], out, kGrip);
-    });
-  }
-  followShoulder(eIO(seg(t, 1.3, 1.42)));                        // upper-arm skin stays on the arm for the rest of the intro (rod fix)
-  // Head aim LAST: the grip pose also drives the chest/spine, so aiming before it let the
-  // chest's release (2.46–2.72) swing the head up for a moment (owner: "head glitched up")
+  followShoulder(eIO(seg(t, 0.75, 0.95)));                        // upper-arm skin stays on the arm for the rest of the intro (rod fix)
+  // Head aim LAST. Through the rift opening RiftOpen aims its own head at the lens (stabilised, with the
+  // neck following the body); this takes over as the clip hands off to Skill02, then to the roar clip.
   headBone.getWorldPosition(_hp); _toCam.set(camNow[0], camNow[1], camNow[2]).sub(_hp).normalize();
-  const wAim = 1 - eIO(seg(t, 2.85, 3.2));                      // face straight out from frame 0; hands back to the roar clip
+  const wAim = Math.max(1 - eIO(seg(t, RO_T0, 0.98)), eIO(seg(t, 2.42, 2.66))) * (1 - eIO(seg(t, 2.85, 3.2)));   // idle → clip → Skill02/roar
   const strain = 0.5 * eIO(seg(t, 1.4, 1.9)) * (1 - eIO(seg(t, 2.2, 2.6)));   // head lowers slightly, steadily
   if (wAim > 0) aimHead(_aimDir.copy(FACE_OUT).lerp(_toCam, 0.7).normalize().add(_hp.set(0, -0.26 * strain, 0)).normalize(), WORLD_UP, wAim);
   if (wb > 0) aimHead(BOLT_DIR, WORLD_UP, 0.85 * wb);            // head leads along the bolt
   // Tear edges from the fingertips (world → tear space: across = (cos a, −sin a), along = (sin a, cos a))
   let acr0 = 0, acr1 = 0, alg = 0;
   // claw FX strength: builds once the claws are on the edges, flares on each heave, gone on release
-  const kClaw = params.has("nofx") ? 0 : clamp((0.55 * eIO(seg(t, 1.4, 1.55)) + GRIP_HEAVES.reduce((a, h) => a + 0.45 * impulse(t, h, 5), 0)) * kGrip * (1 - seg(t, 2.4, 2.48)), 0, 1.2);   // only while the claws hold the edges
+  const kClaw = params.has("nofx") ? 0 : clamp(0.55 * eIO(seg(t, 1.3, 1.55)) * kGrip * (1 - seg(t, 2.4, 2.48)), 0, 1.2);   // only while the claws hold the edges
   riftUniforms.uClawK.value = kClaw;
   veilU.uClawR.value = 0.32 * kGrip;
   auraMat.uniforms.uK.value = kClaw; auraMat.uniforms.uTime.value = t;
@@ -1030,8 +809,7 @@ function applyTimeline(t, idleClock, wall) {
   let amp = 0; for (const [ti, a] of IMPULSES) amp += a * impulse(t, ti, 8);
   const sx = amp * (Math.sin(t * 83) + 0.5 * Math.sin(t * 47.3)), sy = amp * (Math.cos(t * 71) + 0.5 * Math.sin(t * 59.1));
   const drift = t === 0 ? 1 : 0;
-  const lurch = GRIP_HEAVES.reduce((a, h) => a + 0.03 * Math.sin(Math.PI * seg(t, h - 0.08, h + 0.22)), 0);   // camera feels each heave
-  camera.position.set(c[0] + sx + drift * Math.sin(wall * 0.3) * 0.05, c[1] + sy + drift * Math.sin(wall * 0.23) * 0.03, c[2] - lurch + 0.25 * bell(t, 2.42, 2.66));   // recoil as it lunges
+  camera.position.set(c[0] + sx + drift * Math.sin(wall * 0.3) * 0.05, c[1] + sy + drift * Math.sin(wall * 0.23) * 0.03, c[2] + 0.25 * bell(t, 2.42, 2.66));   // recoil as it lunges
   const tgt = tmp3.set(c[3] + sx * 0.5, c[4] + sy * 0.5, c[5]);
   const fov = fitFov(c[6]);
   if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
@@ -1063,7 +841,7 @@ function applyTimeline(t, idleClock, wall) {
   veilU.uSealed.value = t < 1.9 ? 1 : 0;                 // body stays behind the rift until it pushes through
   // claws always on: the veil still hides them until the tear opens
   riftUniforms.uAngle.value = (lerp(38, 14, riftP) + Math.sin(riftP * Math.PI) * 3) * Math.PI / 180;
-  riftUniforms.uBurstGlow.value = 0.15 * impulse(t, 0.5, 9) + 0.22 * impulse(t, 0.9, 9) + 0.55 * impulse(t, 1.3, 6) + 0.4 * impulse(t, 2.55, 4) + GRIP_HEAVES.reduce((a, h) => a + 0.25 * impulse(t, h, 7), 0);
+  riftUniforms.uBurstGlow.value = 0.15 * impulse(t, 0.5, 9) + 0.22 * impulse(t, 0.9, 9) + 0.55 * impulse(t, 1.3, 6) + 0.4 * impulse(t, 2.55, 4);
   riftUniforms.uTime.value = wall;
 
   // Suction streaks (anticipation)
