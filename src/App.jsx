@@ -10,8 +10,14 @@ import DragonFly_2 from './components/DragonFly_2'
 // The cinematic lands back on its opening shot at timeline 5.3s; the hero fades back in over it
 const ANIMATION_MS = Math.round(toReal(5.3) * 1000)   // ≈ 6.2s with the slowed playback
 const AMBIENT_VOLUME  = 0.3   // ambient track volume (0.0–1.0)
-const CROSSFADE_DURATION  = 5.0   // seconds for the overlap crossfade
-const CROSSFADE_OVERLAP   = 5.0   // seconds before intro ends to start ambient
+// Intro sound design (DragonRiftAudio.mp3, 8.2s): authored against the cinematic from its first frame (breach
+// ~1.4s, burst ~3s, roar ~4.6s), so it starts WITH the intro and plays out in full; the looping ambient
+// track fades in under its tail. (The old music track started 0.7s late and was faded out over its last 5s.)
+const INTRO_AUDIO_URL   = 'DragonRiftAudio.mp3'
+const INTRO_AUDIO_DELAY = 0.0   // seconds after the scroll trigger
+const INTRO_GAIN        = 0.83  // matches the old track's loudness (this file is ~2.8 LU quieter)
+const AMBIENT_IN_AT     = 7.0   // seconds into the intro audio when the ambient starts fading in
+const AMBIENT_FADE      = 4.0   // seconds
 
 
 // Start the soundtrack in sync with the intro, from however far in we already are.
@@ -31,29 +37,23 @@ function startMusic(r) {
     r.masterGainRef.current = master
   }
 
-  const AUDIO_DELAY = 0.7
   const introDuration = r.audioBufferRef.current.duration
-  // Seconds into the intro track we should be right now (negative = not started yet)
-  const offset = (performance.now() - r.triggerTimeRef.current) / 1000 - AUDIO_DELAY
-  const introStartAt = ctx.currentTime - offset  // virtual start time of the intro
-  const crossfadeAt = introStartAt + introDuration - CROSSFADE_OVERLAP
+  // Seconds into the intro audio we should be right now (negative = not started yet)
+  const offset = (performance.now() - r.triggerTimeRef.current) / 1000 - INTRO_AUDIO_DELAY
+  const introStartAt = ctx.currentTime - offset  // virtual start time of the intro audio
+  const ambientAt = introStartAt + Math.min(AMBIENT_IN_AT, introDuration)
 
-  if (offset < introDuration - CROSSFADE_OVERLAP) {
+  if (offset < introDuration - 0.5) {
     const src = ctx.createBufferSource()
     src.buffer = r.audioBufferRef.current
     const gain = ctx.createGain()
-    gain.gain.value = 0.6  // ← 0.0 = silent, 1.0 = full volume
+    gain.gain.value = INTRO_GAIN
     src.connect(gain)
     gain.connect(r.masterGainRef.current)
     if (offset < 0) src.start(introStartAt)
     else src.start(ctx.currentTime, offset)
-
-    if (r.ambientBufferRef.current) {
-      // Fade out intro while ambient fades in, CROSSFADE_OVERLAP s before intro ends
-      gain.gain.setValueAtTime(0.4, crossfadeAt)
-      gain.gain.linearRampToValueAtTime(0, crossfadeAt + CROSSFADE_DURATION)
-      startAmbient(r, crossfadeAt, CROSSFADE_DURATION)
-    }
+    // the intro audio fades out on its own; the ambient loop comes in under its tail
+    if (r.ambientBufferRef.current) startAmbient(r, Math.max(ctx.currentTime, ambientAt), AMBIENT_FADE)
   } else if (r.ambientBufferRef.current) {
     // Intro is (nearly) over — go straight to the looping background track
     startAmbient(r, ctx.currentTime, 2.0)
@@ -122,7 +122,7 @@ function DesktopApp() {
     const ctx = new AudioContext()
     audioCtxRef.current = ctx
 
-    fetch(`${import.meta.env.BASE_URL}Netherwing-Intro-2.mp3`)
+    fetch(`${import.meta.env.BASE_URL}${INTRO_AUDIO_URL}`)
       .then(r => r.arrayBuffer())
       .then(arr => ctx.decodeAudioData(arr))
       .then(buf => { audioBufferRef.current = buf })

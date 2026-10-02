@@ -31,7 +31,7 @@ All paths are relative to `Netherwing-Website/portfolio/` (the git repo). Work h
   - `?nohud` hides the HUD.
   - `?nofx` hides the claw effects.
   - `?view=side|top|q34|back|low` is a debug orbit camera, with the rift hidden.
-  - Tuning knobs: `?vibe=`, `?faceKey=`, `?wingShade=`, `?rim=`, `?bodyTone=`, `?eyeSink=`, `?eyeR=`, `?eyeDepth=`, `?eyeGlow=`, `?boltX=`, `?boltY=`, `?helperAt=`.
+  - Tuning knobs: `?vibe=`, `?faceKey=`, `?wingShade=`, `?rim=`, `?bodyTone=`, `?eyeFit=`, `?eyeGlow=`, `?boltX=`, `?boltY=`, `?helperAt=`.
 
 ## 3. How the module works
 
@@ -46,7 +46,7 @@ All paths are relative to `Netherwing-Website/portfolio/` (the git repo). Work h
 - **Procedural layers on top** (much thinner since RiftOpen):
   1. Clips.
   2. Rig transform (`DRAGON` track) and bolt yaw/pitch. No body squaring: RiftOpen is authored square to the rift.
-  3. `followShoulder` (upper-arm skin helper pinned 55% up the upper arm, from 0.75s on).
+  3. `followShoulder(1)` for the whole intro: the `ElbowUpper_*` skin helper (it carries the elbow skin, ~0.9 weight at the elbow, 0.5 mid-forearm) pinned ON the elbow (`HELPER_AT` 0). The old 0.55 (55% up the upper arm) dragged the elbow skin ~0.2 toward the shoulder: one sagging tube with no elbow, bending beside the chest — the owner's "> <" / "curvy twist like it's smiley" forearms.
   4. **Head aim last**: `aimHead`, spread over Neck1 → Neck3 → Head. Off while RiftOpen plays (the clip stabilises its own head on the lens); on for the idle and from 2.42 for Skill02/roar.
 - **Rift** = a 120-unit plane at z=0 with a `discard` tear shader (`TEAR_GLSL`: `t_spine`, `t_half`, with grip terms `uGripW/uGripC/uGripY/uGripK`).
   - The **veil** clips any dragon fragment in front of the plane unless it's inside the tear. `uSealed` = only the claw mesh passes during the breach.
@@ -65,8 +65,8 @@ All paths are relative to `Netherwing-Website/portfolio/` (the git repo). Work h
 - **Key poses** (`KEYS`, timeline s): 0.70 idle → 1.00 coil (reared back, right claw cocked by the cheek, wings folded) → 1.27 strike (lunges in behind the right claw, chest twisted into it) → 1.40 both claws hooked → 1.62 load (sinks back, pelvis tucks, thighs up, shoulders hunch, head low) → 1.745 breakdown (60% of the drive) → 2.00 drive (rises and pushes toward the fabric, blades protract) → 2.30 peak (chest proud, wings cocked) → 2.40 gather (dip, wings at the top of the upstroke) → 2.54 burst (end of the downstroke, turning 15° into Skill02's heading) → 2.825 = Skill02 frame 14 exactly.
 - Bodies come from Skill02 frame 8 squared to the rift (`square`), placed by shoulder-mid (`at`), then edited with world-space ops (`pitch/yaw/roll`, `pelvis`, `hips`, `knees`, `adduct`, `scap`, `retract`, `tail`, `tailseg`). Wings come from library frames mirrored side to side (`wing_from`, `mirror_wing`).
 - **Overlap:** per-bone key offsets (`offset()`: chest +0.7f, neck +1.2f, wings +2.5f, tail +1.5…6f, feathers +3f), capped so they never crowd the next key; the wings have no lag on the gather/burst keys (they drive the burst).
-- **Arms are solved every frame** (`solve_frame`): two-bone IK that bends the elbow only about its anatomical hinge (local Z), elbows mostly out (`POLE`), reach capped at 95%. Targets (`arm_plan`): wind-up → strike through the crack (right 1.27, left 1.36) → hooked on the tear edges riding outward (one ease, 1.48→2.36) → release 2.38: carried out/back with the shoulders, elbows folding to ~105°, then into Skill02's arms by 2.62. Knuckles along the edge and talons over the lip (`align_hand`, `clamp_fingers`, ports of the old site code).
-- Also per frame: head stabilised on the lens (`aim_head`), and the model's left elbow blade swung 50° so it doesn't hang below the arm like a rod.
+- **Arms are solved every frame** (`solve_frame`): two-bone IK that bends the elbow only about its anatomical hinge (local Z), elbows mostly **down** (`POLE` (0.2 out, 0.9 down, 0.3 back)), reach capped at 95%. Head-on, shoulder → elbow → wrist → claw must run outward in order (each arm a "\/"): with the elbows pushed out sideways the elbow sat outside the wrist and the hand bent back out at the wrist, which the owner called inverted joints ("> <"). Targets (`arm_plan`): wind-up → strike through the crack (right 1.27, left 1.36) → hooked on the tear edges riding outward (one ease, 1.48→2.36) → release 2.38: carried out/back with the shoulders, elbows folding to ~105°, then into Skill02's arms by 2.62. Hands (`aim_hand`): aimed by the anatomical palm (`PALM`, wrist-local, mirror-symmetric targets): fingers out and toward the lens, palm out to its tear edge (20° up); the roll this adds to the game pose about the forearm is capped at 95° (any rest goes to the `ElbowLower`/`ElbowUpper` skin helpers) and the wrist bend at 50°. Fingers flex only about their local +Y (`flex_fingers`, +10/15/15° on the game's curl). The old `align_hand`/`clamp_fingers` gave both hands one knuckle target and curled toward "out" whichever way the palm faced: the left fingers bent backwards and the right wrist rolled ~150°. `ElbowUpper` is keyed on the elbow per frame (`pin_elbow_skin`), `ElbowLower` uses the idle's offset/scale (Skill02 keys an odd one on the right).
+- Also per frame: head stabilised on the lens (`aim_head`), and the model's left elbow blade pivoted about its root at the elbow so it sweeps back as a short spur (`pivot_blade`; its location is keyed too) instead of hanging below the arm like a rod.
 - The site's `DRAGON` keys must match `RIG` in the script (the claws are solved against them): rig x 0.12, z −1.3 from 1.3 to 2.40, then the smootherstep lunge through to 2.68.
 - **Rebuild:** in Blender (MCP) `exec(open('…/_blender/build_riftopen.py').read()); build(); export('<scratch>/ro_raw.glb')`, then `../_blender/compress_glb.sh` (drops unused clips, WebP q90 + Draco → `public/intro/netherwing_pollux_flap.glb`, ~3.6 MB). Previews: `render_seq(tag, times, ("cam", "side"))` renders from the site camera (`RO_Cam`, from the copied `CAM` keys) or debug cams into `_blender/frames/<tag>`.
 
@@ -89,7 +89,7 @@ All paths are relative to `Netherwing-Website/portfolio/` (the git repo). Work h
 - **Breach:** only the claw crosses first. The body is square to the rift and in line with the face **from frame 0**; it never turns into it.
 - **The pull is confident, not a struggle.** No heave/slip back-and-forth, no tremor, no heave shakes (all removed; they read as choppy when slowed). No camera impact shake at the 1.3 strike either (it read as the neck glitching as the head first appears).
 - **Alive but in place** during the pull: the whole body works (pelvis, legs, tail, chest, wings) and stays connected to the claws, without over-animating or misaligned joints. No sines/noise; one beat per key, no reversals. History: the owner rejected a frozen body ("body frozen while the arms spread", "body looks detached from the arms") and the old procedural fix layers; on 2026-10-01 they asked to start from scratch with a genuinely animated clip, which is RiftOpen (§4a).
-- **The model's left elbow blade** sticks out of the elbow point (the right one lies along the upper arm). With the elbows down it hangs like a rod (owner rejected that); RiftOpen keeps the elbows mostly out and swings the blade 50°.
+- **The model's left elbow blade** sticks out of the elbow point (the right one lies along the upper arm). With the elbows down it hangs like a rod (owner rejected that); RiftOpen keeps the elbows down (pushing them out instead inverts the arms) and pivots the blade back about its root.
 - **Claws:** keep the game clip's own curled claw (wrist and fingers aren't overridden by Grip), with knuckles along the lip and talons hooked over it. Claw mesh always visible. Joints must never bend or twist unnaturally; elbows are solved with a **signed** angle about the idle hinge.
 - **No jaw opening during the grip** (head-on it reads as a second mini mouth).
 - **Head never glitches.** Aim it after everything that moves the chest.
@@ -99,7 +99,7 @@ All paths are relative to `Netherwing-Website/portfolio/` (the git repo). Work h
   - The owner rejected *both* the over-saturated pass (mean saturation ~0.8, hot pink, crushed blacks) *and* the grey under-saturated pass (~0.45). The approved band is a **mean saturation of about 0.60–0.68**.
   - The fabric and black floor match the site hero's violet-black (≈ rgb 9,3,20).
 - **Never add:** halo, ring outlines around the claws, lens-bokeh butterflies.
-- **Eyes:** subtle (brightness 4.5, about 75% of the original), small and seated in the sockets (owner asked twice: they bulged out). Each is a flat almond lens: radius `EYE_R` 0.024, depth `EYE_DEPTH` 0.6 along the eye bone's local x (which points out of the face; the old 1.3 made a capsule sticking forward), no sink (sinking deeper hides them at 3/4 views). Always-on faint glow sprite, `EYE_GLOW` 0.09. URL knobs: `?eyeR=`, `?eyeDepth=`, `?eyeSink=`, `?eyeGlow=`.
+- **Eyes:** subtle (brightness 4.5, about 75% of the original), red spheres **fitted to the model's own eyeballs** (`eyeballFit`: centre and radius of the ~130 vertices skinned to each eye bone, bind pose; `EYE_FIT` 1.04 so the red just covers it), so the red fills exactly the eye hole the lids leave open. History: a hand-sized ellipsoid first bulged out, then (smaller, squashed, sunk) sat behind the model's eyeball and showed as a rim beside the eye hole (owner: "the eyes don't fully align with the eye hole … when it's roaring"); a bulgier try was rejected. Always-on faint glow sprite, `EYE_GLOW` 0.09, anchored on the eyeball's front surface and shaped as an almond along the eye's width (`EYE_GLOW_SQUASH` 0.7). URL knobs: `?eyeFit=`, `?eyeGlow=`, `?eyeGlowSquash=`.
 - **Site:** the petals and dust (`ButterflyCanvas`) and the hero text drop shadow appear **only after** `dragonSceneDone`. The hero shadow is subtle (the owner halved it once).
 - **Process:** don't commit or push without being asked. When asked for reviews, spawn reviewer agents (cinematographer, animator, lighting, colourist) and **give them the guardrails above** so they don't recommend rejected directions.
 
@@ -154,7 +154,7 @@ References in `../_references/cinematic/`:
 ## 9. Open / possible next steps (none requested yet)
 
 - Commit the RiftOpen work on `intro-prototype`; then, when the owner approves, merge into `main` and push (that deploys live).
-- Intro music (`Netherwing-Intro-2.mp3`) isn't re-timed to the ~7.5s cinematic.
+- Intro audio is `public/DragonRiftAudio.mp3` (owner's sound design, made from `../netherwing-intro.mp4` + `../netherwing-intro-sound.md`); it starts with the cinematic (no delay) and the ambient loop fades in under its tail at 7s (`App.jsx` constants).
 - Delete the five old, unused layer components once the owner OKs it.
 - The head turns quickly at ~4.13–4.23 (the deliberate turn into the bolt); slow it if the owner calls it a glitch.
 - Cyan butterfly accents barely register (additive blending over violet); needs a sprite/blend change, not the grade.

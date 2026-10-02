@@ -539,33 +539,46 @@ function setClips(list) {
   wingU.uWingR.value = 2.6 / orient.scale.x;
 }
 
-// Eyes: HDR red spheres on the eye bones, sized in world units
-// Owner (twice): the eyes bulged out of the sockets. The eye bone's local x points straight out of the face,
-// and the old 1.3 squash there made each eye a capsule sticking forward; now a flat almond lens sitting in
-// the socket (depth 0.6), 20% smaller, with a smaller glow. Sinking it deeper instead hid it at 3/4 views.
-const EYE_SINK = Number(params.get("eyeSink") || 0);         // world units pushed into the skull
-const EYE_R = Number(params.get("eyeR") || 0.024);           // eyeball radius (world units, before the squash below)
-const EYE_GLOW = Number(params.get("eyeGlow") || 0.09);      // glow sprite size
-const EYE_DEPTH = Number(params.get("eyeDepth") || 0.6);     // squash along the eye bone's local x (out of the face)
+// Eyes: HDR red spheres FITTED to the model's own eyeballs (the ~130 vertices skinned to each eye bone,
+// a sphere just in front of the bone), so the red fills exactly the eye hole the lids leave open.
+// History: a hand-sized ellipsoid (radius 0.03, then 0.024 squashed and sunk 0.004) sat behind the model's
+// eyeball and was larger than it, so the red showed as a rim around / beside the eye hole (owner: "the eyes
+// don't fully align with the eye hole, you can see it when it's roaring"); before that it bulged out.
+const EYE_FIT = Number(params.get("eyeFit") || 1.04);        // red sphere radius / model eyeball radius (just covers it)
+const EYE_GLOW = Number(params.get("eyeGlow") || 0.09);      // glow sprite size (along the eye's width)
+const EYE_GLOW_SQUASH = Number(params.get("eyeGlowSquash") || 0.7);   // almond: height / width
+function eyeballFit(bone) {
+  // bind-pose vertex → bone-local (boneInverse · bindMatrix · v): pose-independent
+  const pts = [], p = new THREE.Vector3();
+  model.traverse((o) => {
+    if (!o.isSkinnedMesh) return;
+    const bi = o.skeleton.bones.indexOf(bone); if (bi < 0) return;
+    const pos = o.geometry.attributes.position, si = o.geometry.attributes.skinIndex, sw = o.geometry.attributes.skinWeight;
+    for (let v = 0; v < pos.count; v++) for (let k = 0; k < 4; k++) {
+      if (si.getComponent(v, k) !== bi || sw.getComponent(v, k) <= 0.5) continue;
+      pts.push(p.fromBufferAttribute(pos, v).applyMatrix4(o.bindMatrix).applyMatrix4(o.skeleton.boneInverses[bi]).clone()); break;
+    }
+  });
+  if (!pts.length) return { c: new THREE.Vector3(), r: 0.024 / bone.getWorldScale(p).x };
+  const c = pts.reduce((a, q) => a.add(q), new THREE.Vector3()).multiplyScalar(1 / pts.length);
+  return { c, r: pts.reduce((a, q) => a + q.distanceTo(c), 0) / pts.length };
+}
 for (const name of ["Eye_L_047", "Eye_R_048"]) {
   const bone = model.getObjectByName(name);
-  const ws = bone.getWorldScale(new THREE.Vector3()).x;
+  const fit = eyeballFit(bone);
   const mat = new THREE.MeshBasicMaterial({ color: 0xe51247, transparent: true });
   mat.onBeforeCompile = (sh) => addVeil(sh);
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(EYE_R / ws, 16, 12), mat);
-  eye.scale.set(EYE_DEPTH, 0.6, 0.7); eye.renderOrder = 5;
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(fit.r * EYE_FIT, 24, 16), mat);
+  eye.position.copy(fit.c); eye.renderOrder = 5;
+  eye.userData.frontLocal = fit.r * EYE_FIT;                  // front surface, in bone-local units along +x (out of the face)
   bone.add(eye); eyeMats.push(mat); eyeMeshes.push(eye);
-  // Sunk into the socket (owner: they bulged out): push back toward the skull centre
-  const inward = headBone.getWorldPosition(new THREE.Vector3()).sub(bone.getWorldPosition(new THREE.Vector3())).normalize();
-  const local = bone.worldToLocal(bone.getWorldPosition(new THREE.Vector3()).addScaledVector(inward, EYE_SINK)).sub(bone.worldToLocal(bone.getWorldPosition(new THREE.Vector3())));
-  eye.position.copy(local);
 }
 
 const eyeGlows = eyeMeshes.map(() => {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(1.0, 0.31, 0.82), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
-  sp.scale.setScalar(EYE_GLOW); sp.renderOrder = 6; scene.add(sp); return sp;
+  sp.scale.set(EYE_GLOW, EYE_GLOW * EYE_GLOW_SQUASH, 1); sp.renderOrder = 6; scene.add(sp); return sp;
 });
-const _eg = new THREE.Vector3(), _ec = new THREE.Vector3(), _ed = new THREE.Vector3();
+const _eg = new THREE.Vector3(), _ec = new THREE.Vector3(), _ed = new THREE.Vector3(), _ex = new THREE.Vector3(), _ev0 = new THREE.Vector3(), _ev1 = new THREE.Vector3();
 
 // ─── the timeline (6.3s) ────────────────────────────────────────────────────
 const DX = 0.12;          // the dragon and the tear share a midline (the camera sits a touch right of it)
@@ -684,13 +697,14 @@ function aimHead(dir, up, w) {
 }
 
 const boneBy = (prefix) => { let b = null; model.traverse((o) => { if (!b && o.isBone && o.name.startsWith(prefix)) b = o; }); return b; };
-// Upper-arm skin helpers: ElbowUpper_* carries the upper-arm skin near the elbow but is parented
-// to the elbow with a fixed offset; in the grip pose the right one lands past the shoulder by the
-// neck, stretching the upper arm into a rod through the neck (owner). During the grip, pin each
-// helper on the upper arm (between shoulder and elbow) so the skin stays on the arm.
+// Elbow skin helpers: ElbowUpper_* carries the skin around the elbow (~0.9 weight there, 0.5 mid-forearm)
+// but is parented to the elbow with a fixed offset that, in this ripped rig, lands off the arm (once past
+// the shoulder by the neck: "a rod through the neck"). Pin it ON the elbow for the whole intro. (It used
+// to sit 55% up the upper arm, which dragged the elbow skin ~0.2 toward the shoulder: the arm became one
+// sagging tube with no elbow, bending beside the chest — owner: "> <", "curvy twist … like it's smiley".)
 const ARM_HELPERS = ["L", "R"].map((s) => ({ helper: boneBy(`ElbowUpper_${s}_`), shoulder: boneBy(`Shoulder_${s}_`), elbow: boneBy(`Elbow_${s}_`) }));
 const _h1 = new THREE.Vector3(), _h2 = new THREE.Vector3();
-const HELPER_AT = Number(params.get("helperAt") || 0.55);          // 0 = at the elbow … 1 = at the shoulder
+const HELPER_AT = Number(params.get("helperAt") || 0);             // 0 = at the elbow … 1 = at the shoulder
 function followShoulder(w) {
   for (const h of ARM_HELPERS) {
     h.shoulder.getWorldPosition(_h1); h.elbow.getWorldPosition(_h2);
@@ -752,7 +766,7 @@ function applyTimeline(t, idleClock, wall) {
   const kGrip = eIO(seg(t, 1.2, 1.45)) * (1 - eIO(seg(t, 2.38, 2.5)));
   const ang = (lerp(38, 14, eIO(seg(t, 1.3, 2.5))) + Math.sin(eIO(seg(t, 1.3, 2.5)) * Math.PI) * 3) * Math.PI / 180;
   const ca = Math.cos(ang), sa = Math.sin(ang);
-  followShoulder(eIO(seg(t, 0.75, 0.95)));                        // upper-arm skin stays on the arm for the rest of the intro (rod fix)
+  followShoulder(1);                                               // elbow skin stays on the elbow, the whole intro
   // Head aim LAST. Through the rift opening RiftOpen aims its own head at the lens (stabilised, with the
   // neck following the body); this takes over as the clip hands off to Skill02, then to the roar clip.
   headBone.getWorldPosition(_hp); _toCam.set(camNow[0], camNow[1], camNow[2]).sub(_hp).normalize();
@@ -883,14 +897,22 @@ function applyTimeline(t, idleClock, wall) {
   veinU.uVein.value = t < 2.5 ? 0.15 : 0.5 + 1.5 * Math.exp(-Math.pow((t - 3.45) * 2.5, 2));
   const eyeI = 1 + 2 * Math.exp(-Math.pow((t - 1.3) * 6, 2)) + 2.5 * Math.exp(-Math.pow((t - 3.45) * 5, 2)) + 1.5 * seg(t, 4.2, 4.5);
   eyeMats.forEach((m) => { m.color.setHex(0xe51247).multiplyScalar(4.5 * eyeI); });
-  // Always-on soft glow just in front of each socket (sunk eyes can be hidden by the brow).
+  // Always-on soft glow on each eye (sunk eyes can be hidden by the brow). Anchored on the eye's visible
+  // FRONT surface, not its centre buried in the socket (owner: the glow didn't line up with the eyes; at
+  // angled views the centre projects off the visible eye), and shaped as an almond along the eye's width.
   // Fades as the head turns away so it never shines through the skull.
-  headBone.getWorldPosition(_hp);
+  headBone.getWorldPosition(_hp); camera.updateMatrixWorld();
   eyeMeshes.forEach((e, i) => {
-    e.getWorldPosition(_eg); _ec.copy(camera.position).sub(_eg).normalize();
+    const bone = e.parent;
+    e.getWorldPosition(_eg);
+    _eg.addScaledVector(_ex.setFromMatrixColumn(bone.matrixWorld, 0).normalize(), e.userData.frontLocal * bone.getWorldScale(_ed).x);   // bone +x: out of the face
+    _ec.copy(camera.position).sub(_eg).normalize();
     const facing = clamp(_ed.copy(_eg).sub(_hp).normalize().dot(_ec) * 2 + 0.3, 0, 1);
-    eyeGlows[i].position.copy(_eg).addScaledVector(_ec, 0.08);
-    eyeGlows[i].material.opacity = 0.5 * facing * Math.min(1.6, 0.7 + 0.3 * eyeI) * (rig.visible ? 1 : 0);
+    eyeGlows[i].position.copy(_eg).addScaledVector(_ec, 0.08);   // toward the lens: same spot on screen, clear of the brow
+    _ev0.copy(_eg).applyMatrix4(camera.matrixWorldInverse);
+    _ev1.copy(_eg).addScaledVector(_ex.setFromMatrixColumn(bone.matrixWorld, 2).normalize(), 0.02).applyMatrix4(camera.matrixWorldInverse);
+    eyeGlows[i].material.rotation = Math.atan2(_ev1.y - _ev0.y, _ev1.x - _ev0.x);   // long axis along the eye's width (bone z)
+    eyeGlows[i].material.opacity = 0.58 * facing * Math.min(1.6, 0.7 + 0.3 * eyeI) * (rig.visible ? 1 : 0);   // 0.58: same glow as the old round sprite at 0.5
   });
 
   // Butterflies
