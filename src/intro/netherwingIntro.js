@@ -851,8 +851,12 @@ function applyTimeline(t, idleClock, wall) {
   // settles to a readable tear for the final frame
   riftUniforms.uHalfOpen.value = t < 1.3 ? 0 : 0.0006 + eOut(seg(t, 1.3, 1.5)) * 0.006 + eIO(seg(t, 2.3, 2.75)) * 0.1 * (1 - 0.8 * eIO(seg(t, 5.0, 5.4)));
   riftUniforms.uLen.value = t < 1.3 ? 0.02 + 0.03 * seg(t, 0.1, 1.3) : 0.05 + 0.04 * seg(t, 1.3, 1.9) + 0.07 * eOut(seg(t, 2.35, 2.8)) * (1 - 0.3 * eIO(seg(t, 5.0, 5.4)));
-  veilU.uVeil.value = t < 2.8 ? 1 : 0;
-  veilU.uSealed.value = t < 1.9 ? 1 : 0;                 // body stays behind the rift until it pushes through
+  veilU.uVeil.value = params.has("noveil") ? 0 : t < 2.8 ? 1 : 0;   // ?noveil: debug, shows what the veil hides
+  // Sealed = nothing but the claws may cross the fabric. Only until the first claw is through (1.27): the head
+  // presses into the opening from 1.30 (snout up to 0.16 past the plane by 2.3), and while sealed the veil cut
+  // the snout away INSIDE the open tear — a see-through hole in the face that popped back at 1.9 (owner:
+  // "an object phasing through the head"). Unsealed, only parts outside the tear are hidden (behind fabric).
+  veilU.uSealed.value = t < 1.3 ? 1 : 0;
   // claws always on: the veil still hides them until the tear opens
   riftUniforms.uAngle.value = (lerp(38, 14, riftP) + Math.sin(riftP * Math.PI) * 3) * Math.PI / 180;
   riftUniforms.uBurstGlow.value = 0.15 * impulse(t, 0.5, 9) + 0.22 * impulse(t, 0.9, 9) + 0.55 * impulse(t, 1.3, 6) + 0.4 * impulse(t, 2.55, 4);
@@ -894,7 +898,7 @@ function applyTimeline(t, idleClock, wall) {
   // Emissive accents
   wingU.uWingGlow.value = 0.7 * (0.03 + 0.2 * eOut(seg(t, 2.5, 2.9)) + 0.15 * tk);
   rimU.uRim.value = RIM_K * (0.35 + 0.65 * seg(t, 2.3, 2.7)) * seg(t, 1.2, 1.5);
-  veinU.uVein.value = t < 2.5 ? 0.15 : 0.5 + 1.5 * Math.exp(-Math.pow((t - 3.45) * 2.5, 2));
+  veinU.uVein.value = lerp(0.15, 0.5, eIO(seg(t, 2.42, 2.58))) + 1.5 * Math.exp(-Math.pow((t - 3.45) * 2.5, 2));   // veins ignite with the burst (was a one-frame step at 2.5)
   const eyeI = 1 + 2 * Math.exp(-Math.pow((t - 1.3) * 6, 2)) + 2.5 * Math.exp(-Math.pow((t - 3.45) * 5, 2)) + 1.5 * seg(t, 4.2, 4.5);
   eyeMats.forEach((m) => { m.color.setHex(0xe51247).multiplyScalar(4.5 * eyeI); });
   // Always-on soft glow on each eye (sunk eyes can be hidden by the brow). Anchored on the eye's visible
