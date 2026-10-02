@@ -38,6 +38,7 @@ export default function DragonFly_2() {
     el.appendChild(renderer.domElement);
     renderer.domElement.style.background = "transparent";
     renderer.domElement.style.filter = `blur(${BLUR_AMOUNT}px)`;
+    renderer.domElement.style.display = "none";   // only shown (and rendered) while flying
 
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
@@ -67,8 +68,8 @@ export default function DragonFly_2() {
     // ── State ─────────────────────────────────────────────────────────────────
     let dragonRef = null;
 
-    // ── Model load ────────────────────────────────────────────────────────────
-    loadNetherwingGLTF().then((gltf) => {
+    // ── Model load: after the intro (it shares the intro's file, so this is a cache hit) ──
+    const load = () => loadNetherwingGLTF().then((gltf) => {
       const dragon = gltf.scene;
       dragon.scale.set(2, 2, 2);
       dragon.position.set(FLY_START_X, FLY_Y, 0);
@@ -127,6 +128,7 @@ export default function DragonFly_2() {
         dragon.rotation.y = -Math.PI / 2;
         dragon.rotation.z = 0;
         flyTl.restart();
+        kick(FLY_DURATION + 1.2);
       };
 
       window.hideDragonFly2 = () => {
@@ -135,13 +137,30 @@ export default function DragonFly_2() {
 
       window.dispatchEvent(new CustomEvent('dragonFly2Ready'));
     });
+    window.addEventListener('dragonSceneDone', load, { once: true });
 
     // ── Animate loop ──────────────────────────────────────────────────────────
     const timer = new Timer();
     let flyTime = 0;
 
-    let rafId;
+    // Render only while a fly-by is in the air: an idle fullscreen WebGL canvas (plus its CSS
+    // blur) re-composited every frame for the whole visit was pure GPU heat
+    let rafId, running = false, activeUntil = 0;
+    function kick(seconds) {
+      activeUntil = performance.now() + seconds * 1000;
+      renderer.domElement.style.display = "";
+      if (running) return;
+      running = true;
+      timer.update();                       // swallow the idle gap so the first delta is one frame
+      rafId = requestAnimationFrame(animate);
+    }
     function animate() {
+      if (performance.now() > activeUntil) {
+        running = false;
+        if (dragonRef) dragonRef.visible = false;
+        renderer.domElement.style.display = "none";
+        return;
+      }
       rafId = requestAnimationFrame(animate);
       timer.update();
       const delta = timer.getDelta();
@@ -158,9 +177,9 @@ export default function DragonFly_2() {
 
       composer.render();
     }
-    animate();
 
     return () => {
+      window.removeEventListener('dragonSceneDone', load);
       cancelAnimationFrame(rafId);
       stopResize();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);

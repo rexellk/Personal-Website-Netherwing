@@ -1,20 +1,23 @@
 import './App.css'
 import { useState, useEffect, useRef } from 'react'
 import LoadingScreen from './components/LoadingScreen'
-import DragonScene from './components/DragonScene'
-import VignetteOverlay from './components/VignetteOverlay'
-import RiftCanvas from './components/RiftCanvas'
-import ClawScene from './components/ClawScene'
-import RiftParticles from './components/RiftParticles'
+import IntroCinematic from './components/IntroCinematic'
+import { toReal } from './intro/netherwingIntro'
 import Portfolio from './web_components/Portfolio'
 import DragonFly from './components/DragonFly'
 import DragonFly_2 from './components/DragonFly_2'
 
-const ANIMATION_MS = 5000
-const FLASH_DURATION = 550
+// The cinematic lands back on its opening shot at timeline 5.3s; the hero fades back in over it
+const ANIMATION_MS = Math.round(toReal(5.3) * 1000)   // ≈ 6.2s with the slowed playback
 const AMBIENT_VOLUME  = 0.3   // ambient track volume (0.0–1.0)
-const CROSSFADE_DURATION  = 5.0   // seconds for the overlap crossfade
-const CROSSFADE_OVERLAP   = 5.0   // seconds before intro ends to start ambient
+// Intro sound design (DragonRiftAudio.mp3, 8.2s): authored against the cinematic from its first frame (breach
+// ~1.4s, burst ~3s, roar ~4.6s), so it starts WITH the intro and plays out in full; the looping ambient
+// track fades in under its tail. (The old music track started 0.7s late and was faded out over its last 5s.)
+const INTRO_AUDIO_URL   = 'DragonRiftAudio.mp3'
+const INTRO_AUDIO_DELAY = 0.0   // seconds after the scroll trigger
+const INTRO_GAIN        = 0.83  // matches the old track's loudness (this file is ~2.8 LU quieter)
+const AMBIENT_IN_AT     = 7.0   // seconds into the intro audio when the ambient starts fading in
+const AMBIENT_FADE      = 4.0   // seconds
 
 
 // Start the soundtrack in sync with the intro, from however far in we already are.
@@ -34,29 +37,23 @@ function startMusic(r) {
     r.masterGainRef.current = master
   }
 
-  const AUDIO_DELAY = 0.7
   const introDuration = r.audioBufferRef.current.duration
-  // Seconds into the intro track we should be right now (negative = not started yet)
-  const offset = (performance.now() - r.triggerTimeRef.current) / 1000 - AUDIO_DELAY
-  const introStartAt = ctx.currentTime - offset  // virtual start time of the intro
-  const crossfadeAt = introStartAt + introDuration - CROSSFADE_OVERLAP
+  // Seconds into the intro audio we should be right now (negative = not started yet)
+  const offset = (performance.now() - r.triggerTimeRef.current) / 1000 - INTRO_AUDIO_DELAY
+  const introStartAt = ctx.currentTime - offset  // virtual start time of the intro audio
+  const ambientAt = introStartAt + Math.min(AMBIENT_IN_AT, introDuration)
 
-  if (offset < introDuration - CROSSFADE_OVERLAP) {
+  if (offset < introDuration - 0.5) {
     const src = ctx.createBufferSource()
     src.buffer = r.audioBufferRef.current
     const gain = ctx.createGain()
-    gain.gain.value = 0.6  // ← 0.0 = silent, 1.0 = full volume
+    gain.gain.value = INTRO_GAIN
     src.connect(gain)
     gain.connect(r.masterGainRef.current)
     if (offset < 0) src.start(introStartAt)
     else src.start(ctx.currentTime, offset)
-
-    if (r.ambientBufferRef.current) {
-      // Fade out intro while ambient fades in, CROSSFADE_OVERLAP s before intro ends
-      gain.gain.setValueAtTime(0.4, crossfadeAt)
-      gain.gain.linearRampToValueAtTime(0, crossfadeAt + CROSSFADE_DURATION)
-      startAmbient(r, crossfadeAt, CROSSFADE_DURATION)
-    }
+    // the intro audio fades out on its own; the ambient loop comes in under its tail
+    if (r.ambientBufferRef.current) startAmbient(r, Math.max(ctx.currentTime, ambientAt), AMBIENT_FADE)
   } else if (r.ambientBufferRef.current) {
     // Intro is (nearly) over — go straight to the looping background track
     startAmbient(r, ctx.currentTime, 2.0)
@@ -79,13 +76,21 @@ function startAmbient(r, at, fadeSeconds) {
 }
 
 
+// "Anim on / off" (corner Netherwing-head toggle), remembered per browser
+const ANIM_KEY = 'nw-anim'
+function readAnimPref() {
+  try { return localStorage.getItem(ANIM_KEY) !== 'off' } catch { return true }
+}
+
 function DesktopApp() {
   const [booting, setBooting] = useState(true)
-  const [animating, setAnimating] = useState(false)
-  const [flashing, setFlashing] = useState(false)
   const [modelReady, setModelReady] = useState(false)
   const [muted, setMuted] = useState(true)
+  const [animOn, setAnimOn] = useState(readAnimPref)
   const triggered = useRef(false)
+  // 'pending' (waiting for the first scroll) → 'playing' → 'played'; anim off before it ran →
+  // 'skipping' (undoable until the first scroll) → 'skipped'
+  const introState = useRef('pending')
   const masterGainRef = useRef(null)
 
 
@@ -117,7 +122,7 @@ function DesktopApp() {
     const ctx = new AudioContext()
     audioCtxRef.current = ctx
 
-    fetch(`${import.meta.env.BASE_URL}Netherwing-Intro-2.mp3`)
+    fetch(`${import.meta.env.BASE_URL}${INTRO_AUDIO_URL}`)
       .then(r => r.arrayBuffer())
       .then(arr => ctx.decodeAudioData(arr))
       .then(buf => { audioBufferRef.current = buf })
@@ -136,11 +141,11 @@ function DesktopApp() {
     document.body.style.overflow = 'hidden'
   }, [])
 
-  // Only dragonReady (DragonScene GLB) gates the scroll trigger —
+  // Only dragonReady (the intro cinematic's GLB) gates the scroll trigger —
   // dragonRoarReady/dragonFly2Ready fire independently and must not unblock scroll early
   useEffect(() => {
     window.addEventListener('dragonReady', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (introState.current === 'pending') window.scrollTo({ top: 0, behavior: 'smooth' })
       setTimeout(() => setModelReady(true), 600)
     }, { once: true })
   }, [])
@@ -165,11 +170,11 @@ function DesktopApp() {
     // The intro starts on the first "scroll down" intent: mouse wheel,
     // trackpad, swipe up on touch screens, or arrow / page / space keys.
     function startIntro() {
-      if (!modelReady || triggered.current) return false
+      if (!modelReady || triggered.current || window.animEnabled === false) return false
       triggered.current = true
+      introState.current = 'playing'
 
       document.body.style.overflow = 'hidden'
-      setAnimating(true)
       window.dispatchEvent(new CustomEvent('riftTrigger'))
 
       triggerTimeRef.current = performance.now()
@@ -182,26 +187,18 @@ function DesktopApp() {
         else startMusic(r)
       }
 
-      // Poll until DragonScene GLB is ready, then start animation + 5s timer together
+      // Poll until the intro cinematic is ready, then start it + the hand-back timer together
       const waitForDragon = setInterval(() => {
         if (!window.startDragonAnimation) return
         clearInterval(waitForDragon)
         window.startDragonAnimation()
 
+        // The cinematic ends on its opening shot (no flash): hand back to the hero + unlock scroll
         setTimeout(() => {
-          setAnimating(false)
-          setFlashing(true)
-
-          setTimeout(() => {
-            window.riftFrozenTime = window.primaryDragonAction?.time ?? 5.0
-            if (window.hideDragon) window.hideDragon()
-            if (window.hideDragonRoar) window.hideDragonRoar()
-            window.dispatchEvent(new CustomEvent('riftFlashDone'))
-            document.body.style.overflow = ''
-          }, FLASH_DURATION * 0.08)
-
-          setTimeout(() => setFlashing(false), FLASH_DURATION)
+          if (window.hideDragonRoar) window.hideDragonRoar()
+          window.dispatchEvent(new CustomEvent('riftFlashDone'))
           document.body.style.overflow = ''
+          introState.current = 'played'
         }, ANIMATION_MS)
       }, 50)
       return true
@@ -241,31 +238,51 @@ function DesktopApp() {
     }
   }, [modelReady])
 
+  // Anim off before the intro: the page unlocks, but the skip only becomes final on the first
+  // scroll (then the rift never opens; nav, petals and music carry on as if it had finished).
+  // Anim back on BEFORE that scroll restores the normal scroll-to-open start; once the visitor
+  // has scrolled, turning it on only re-enables the fly-bys. While the intro or a fly-by is
+  // running it simply finishes; fly-bys are gated in Portfolio.
+  useEffect(() => {
+    window.animEnabled = animOn
+    try { localStorage.setItem(ANIM_KEY, animOn ? 'on' : 'off') } catch { /* private mode */ }
+
+    // ('skipping' too: effects can re-run, e.g. StrictMode, and must re-arm the unlock + listener)
+    if (!animOn && (introState.current === 'pending' || introState.current === 'skipping')) {
+      introState.current = 'skipping'
+      triggered.current = true
+      document.body.style.overflow = ''
+      const finalize = () => {
+        if (window.scrollY <= 0 || introState.current !== 'skipping') return
+        window.removeEventListener('scroll', finalize)
+        introState.current = 'skipped'
+        window.dispatchEvent(new CustomEvent('dragonSceneDone'))
+        // soundtrack: straight to the looping ambient track (no intro cue without the intro)
+        triggerTimeRef.current = performance.now() - 1e7
+        startMusic({ audioCtxRef, audioBufferRef, ambientBufferRef, ambientGainRef, masterGainRef, triggerTimeRef, musicStartedRef })
+      }
+      window.addEventListener('scroll', finalize, { passive: true })
+      return () => window.removeEventListener('scroll', finalize)
+    }
+
+    if (animOn && introState.current === 'skipping') {
+      // turned back on before scrolling: back to the untouched start (the first scroll opens the rift)
+      introState.current = 'pending'
+      triggered.current = false
+      window.scrollTo({ top: 0 })
+      document.body.style.overflow = 'hidden'
+    }
+  }, [animOn])
+
   return (
     <main style={{ background: '#000' }}>
       {booting && <LoadingScreen onComplete={() => setBooting(false)} />}
       <DragonFly/>
       <DragonFly_2/>
-      <RiftCanvas />
-      <VignetteOverlay />
-      <DragonScene />
-      {animating && <ClawScene />}
-      {animating && <RiftParticles />}
+      <IntroCinematic />
 
-      <Portfolio modelReady={modelReady} muted={muted} setMuted={setMuted} />
+      <Portfolio modelReady={modelReady} muted={muted} setMuted={setMuted} animOn={animOn} setAnimOn={setAnimOn} />
 
-      {flashing && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            pointerEvents: 'none',
-            background: 'radial-gradient(ellipse at center, #ffffff 0%, #cc33ff 35%, #4400cc 75%, #000 100%)',
-            animation: `purpleFlash ${FLASH_DURATION}ms ease-out forwards`,
-          }}
-        />
-      )}
     </main>
   )
 }

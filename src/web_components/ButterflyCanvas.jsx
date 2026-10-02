@@ -1,7 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function ButterflyCanvas() {
   const canvasRef = useRef(null);
+  // Petals + rising dust only appear once the whole dragon/rift intro has finished (owner)
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    const onDone = () => setShown(true);
+    window.addEventListener("dragonSceneDone", onDone, { once: true });
+    return () => window.removeEventListener("dragonSceneDone", onDone);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -116,6 +123,8 @@ export default function ButterflyCanvas() {
         height: "100vh",
         pointerEvents: "none",
         zIndex: 1,
+        opacity: shown ? 1 : 0,
+        transition: "opacity 1.6s ease",
       }}
     />
   );

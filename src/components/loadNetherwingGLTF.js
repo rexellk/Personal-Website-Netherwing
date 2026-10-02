@@ -5,7 +5,10 @@ import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 let cachedPromise = null;
 
 /**
- * Loads netherwing_pollux.glb exactly once and returns a cloned copy.
+ * Loads the dragon exactly once and returns a cloned copy. Uses the intro cinematic's file
+ * (intro/netherwing_pollux_flap.glb: same mesh, textures and clips as the old 13 MB
+ * netherwing_pollux.glb, plus the intro's own clips), so the browser downloads it only once.
+ * Call it after the intro has loaded; the fly-bys wait for `dragonSceneDone`.
  * Every caller gets its own deep-cloned scene + animations so Three.js
  * doesn't share mutable state between DragonScene and ClawScene.
  */
@@ -18,16 +21,7 @@ export function loadNetherwingGLTF() {
     gltfLoader.setDRACOLoader(dracoLoader);
 
     cachedPromise = new Promise((resolve, reject) => {
-      gltfLoader.load(
-        `${import.meta.env.BASE_URL}netherwing_pollux.glb`,
-        resolve,
-        (xhr) => {
-          window.dispatchEvent(new CustomEvent('glbProgress', {
-            detail: { loaded: xhr.loaded, total: xhr.total },
-          }));
-        },
-        reject,
-      );
+      gltfLoader.load(`${import.meta.env.BASE_URL}intro/netherwing_pollux_flap.glb`, resolve, undefined, reject);
     });
   }
 
