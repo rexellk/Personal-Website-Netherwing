@@ -76,11 +76,21 @@ function startAmbient(r, at, fadeSeconds) {
 }
 
 
+// "Anim on / off" (corner Netherwing-head toggle), remembered per browser
+const ANIM_KEY = 'nw-anim'
+function readAnimPref() {
+  try { return localStorage.getItem(ANIM_KEY) !== 'off' } catch { return true }
+}
+
 function DesktopApp() {
   const [booting, setBooting] = useState(true)
   const [modelReady, setModelReady] = useState(false)
   const [muted, setMuted] = useState(true)
+  const [animOn, setAnimOn] = useState(readAnimPref)
   const triggered = useRef(false)
+  // 'pending' (waiting for the first scroll) → 'playing' → 'played'; anim off before it ran →
+  // 'skipping' (undoable until the first scroll) → 'skipped'
+  const introState = useRef('pending')
   const masterGainRef = useRef(null)
 
 
@@ -135,7 +145,7 @@ function DesktopApp() {
   // dragonRoarReady/dragonFly2Ready fire independently and must not unblock scroll early
   useEffect(() => {
     window.addEventListener('dragonReady', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      if (introState.current === 'pending') window.scrollTo({ top: 0, behavior: 'smooth' })
       setTimeout(() => setModelReady(true), 600)
     }, { once: true })
   }, [])
@@ -160,8 +170,9 @@ function DesktopApp() {
     // The intro starts on the first "scroll down" intent: mouse wheel,
     // trackpad, swipe up on touch screens, or arrow / page / space keys.
     function startIntro() {
-      if (!modelReady || triggered.current) return false
+      if (!modelReady || triggered.current || window.animEnabled === false) return false
       triggered.current = true
+      introState.current = 'playing'
 
       document.body.style.overflow = 'hidden'
       window.dispatchEvent(new CustomEvent('riftTrigger'))
@@ -187,6 +198,7 @@ function DesktopApp() {
           if (window.hideDragonRoar) window.hideDragonRoar()
           window.dispatchEvent(new CustomEvent('riftFlashDone'))
           document.body.style.overflow = ''
+          introState.current = 'played'
         }, ANIMATION_MS)
       }, 50)
       return true
@@ -226,6 +238,42 @@ function DesktopApp() {
     }
   }, [modelReady])
 
+  // Anim off before the intro: the page unlocks, but the skip only becomes final on the first
+  // scroll (then the rift never opens; nav, petals and music carry on as if it had finished).
+  // Anim back on BEFORE that scroll restores the normal scroll-to-open start; once the visitor
+  // has scrolled, turning it on only re-enables the fly-bys. While the intro or a fly-by is
+  // running it simply finishes; fly-bys are gated in Portfolio.
+  useEffect(() => {
+    window.animEnabled = animOn
+    try { localStorage.setItem(ANIM_KEY, animOn ? 'on' : 'off') } catch { /* private mode */ }
+
+    // ('skipping' too: effects can re-run, e.g. StrictMode, and must re-arm the unlock + listener)
+    if (!animOn && (introState.current === 'pending' || introState.current === 'skipping')) {
+      introState.current = 'skipping'
+      triggered.current = true
+      document.body.style.overflow = ''
+      const finalize = () => {
+        if (window.scrollY <= 0 || introState.current !== 'skipping') return
+        window.removeEventListener('scroll', finalize)
+        introState.current = 'skipped'
+        window.dispatchEvent(new CustomEvent('dragonSceneDone'))
+        // soundtrack: straight to the looping ambient track (no intro cue without the intro)
+        triggerTimeRef.current = performance.now() - 1e7
+        startMusic({ audioCtxRef, audioBufferRef, ambientBufferRef, ambientGainRef, masterGainRef, triggerTimeRef, musicStartedRef })
+      }
+      window.addEventListener('scroll', finalize, { passive: true })
+      return () => window.removeEventListener('scroll', finalize)
+    }
+
+    if (animOn && introState.current === 'skipping') {
+      // turned back on before scrolling: back to the untouched start (the first scroll opens the rift)
+      introState.current = 'pending'
+      triggered.current = false
+      window.scrollTo({ top: 0 })
+      document.body.style.overflow = 'hidden'
+    }
+  }, [animOn])
+
   return (
     <main style={{ background: '#000' }}>
       {booting && <LoadingScreen onComplete={() => setBooting(false)} />}
@@ -233,7 +281,7 @@ function DesktopApp() {
       <DragonFly_2/>
       <IntroCinematic />
 
-      <Portfolio modelReady={modelReady} muted={muted} setMuted={setMuted} />
+      <Portfolio modelReady={modelReady} muted={muted} setMuted={setMuted} animOn={animOn} setAnimOn={setAnimOn} />
 
     </main>
   )

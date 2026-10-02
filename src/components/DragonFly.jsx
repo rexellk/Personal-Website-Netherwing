@@ -65,6 +65,7 @@ export default function DragonFly() {
     el.appendChild(renderer.domElement);
     renderer.domElement.style.opacity = String(CANVAS_OPACITY);
     renderer.domElement.style.background = "transparent";
+    renderer.domElement.style.display = "none";   // only shown (and rendered) while flying
 
     const scene  = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, W / H, 0.1, 100);
@@ -201,8 +202,8 @@ export default function DragonFly() {
     let trailBones = []; // all skeleton bones — sampled for trail spawn points
     const _boneWorldPos = new THREE.Vector3();
 
-    // ── Model load ────────────────────────────────────────────────────────────
-    loadNetherwingGLTF().then((gltf) => {
+    // ── Model load: after the intro (it shares the intro's file, so this is a cache hit) ──
+    const load = () => loadNetherwingGLTF().then((gltf) => {
       const dragon = gltf.scene;
       dragon.scale.set(2, 2, 2);
       dragon.position.set(FLY_START_X, FLY_Y, 0);
@@ -281,6 +282,7 @@ export default function DragonFly() {
         dragon.rotation.y = Math.PI / 2;
         dragon.rotation.z = BANK_OFFSET;
         roarTl.restart();
+        kick();
       };
 
       window.hideDragonRoar = () => {
@@ -289,13 +291,32 @@ export default function DragonFly() {
 
       window.dispatchEvent(new CustomEvent('dragonRoarReady'));
     });
+    window.addEventListener('dragonSceneDone', load, { once: true });
 
     // ── Animate loop ──────────────────────────────────────────────────────────
     const timer = new Timer();
     let flyTime = 0;
 
-    let rafId;
+    // Render only while the fly-by is in the air or its trail is still fading: the idle fullscreen
+    // WebGL canvas used to render (and update 500 trail slots) every frame for the whole visit
+    let rafId, running = false, startedAt = 0, liveTrail = 0;
+    function kick() {
+      startedAt = performance.now();
+      renderer.domElement.style.display = "";
+      if (running) return;
+      running = true;
+      timer.update();                       // swallow the idle gap so the first delta is one frame
+      rafId = requestAnimationFrame(animate);
+    }
     function animate() {
+      const elapsed = (performance.now() - startedAt) / 1000;
+      // the dragon is off-screen past FLY_DURATION: stop spawning, then stop once the trail is gone
+      if (dragonRef && dragonRef.visible && flyTime > FLY_DURATION + 0.3) dragonRef.visible = false;
+      if (elapsed > 10 || (elapsed > 0.5 && !(dragonRef && dragonRef.visible) && liveTrail === 0)) {
+        running = false;
+        renderer.domElement.style.display = "none";
+        return;
+      }
       rafId = requestAnimationFrame(animate);
       timer.update();
       const delta = timer.getDelta();
@@ -327,6 +348,7 @@ export default function DragonFly() {
       }
 
       // Update trail particles
+      liveTrail = 0;
       if (trailMesh) {
         for (let i = 0; i < TRAIL_COUNT; i++) {
           const p = trailPool[i];
@@ -343,6 +365,7 @@ export default function DragonFly() {
           p.y  += p.vy;
           p.life += TRAIL_LIFE_SPEED;
           if (p.life >= 1) { p.active = false; continue; }
+          liveTrail++;
 
           // Fade + shrink as life increases
           const fade = 1.0 - p.life;
@@ -373,9 +396,9 @@ export default function DragonFly() {
 
       composer.render();
     }
-    animate();
 
     return () => {
+      window.removeEventListener('dragonSceneDone', load);
       cancelAnimationFrame(rafId);
       stopResize();
       if (el.contains(renderer.domElement)) el.removeChild(renderer.domElement);

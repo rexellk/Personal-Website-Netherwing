@@ -445,7 +445,8 @@ let breachZ = -2.0;
 const wingMats = [];
 
 const draco = new DRACOLoader().setDecoderPath(opts.dracoPath || "https://www.gstatic.com/draco/versioned/decoders/1.5.7/");
-const gltf = await new GLTFLoader().setDRACOLoader(draco).loadAsync(`${assetBase}netherwing_pollux_flap.glb`); // + Blender-authored Flap clip
+const gltf = await new GLTFLoader().setDRACOLoader(draco).loadAsync(`${assetBase}netherwing_pollux_flap.glb`,   // + Blender-authored Flap clip
+  (xhr) => window.dispatchEvent(new CustomEvent("glbProgress", { detail: { loaded: xhr.loaded, total: xhr.total } })));   // hero's "Loading the dragon (x MB)"
 const model = gltf.scene;
 orient.add(model);
 model.traverse((o) => {
@@ -636,7 +637,9 @@ function clipPlan(t, idleClock) {
   const w03 = eIO(seg(t, 0.7, 0.95)), w02 = eIO(seg(t, 2.36, 2.6)), w22 = eIO(seg(t, 2.8, 3.25));
   const wFl = eIO(seg(t, 4.05, 4.3));                          // Flight takes over for the launch
   const s03 = t < 1.3 ? 0.35 * seg(t, 0.9, 1.3) : 0.35 + 1.9 * eIO(seg(t, 1.3, 2.4));   // ramps up (eOut started at full speed: wrist whip); still drifting at the burst, never a freeze
-  const s02 = 0.9 * eOut(seg(t, 2.42, 2.7));
+  // starts with its weight ramp (w02, 2.36) so its fast opening is masked while it fades in; an eIO here
+  // put the clip's wing whip at full weight (measured 3× the accel)
+  const s02 = 0.9 * eOut(seg(t, 2.36, 2.72));   // accelerates in (eOut started the burst at full speed)
   // Roar: head-thrust / jaw-open peak lands at 3.45, then held
   const s22 = t < 3.45 ? 0.3 + 0.3 * seg(t, 2.95, 3.45) : 0.6 + 0.5 * seg(t, 3.45, 4.2);
   const crown = 0.55 * eIO(seg(t, 2.85, 3.25));                // wings held in the upstroke "crown"
@@ -795,7 +798,10 @@ function alignHand(h, fDes, kDes, w) {
 const LIFE = { chest: model.getObjectByName("Chest_M_019"), sp3: model.getObjectByName("Spine3_M_018"), sp1: spine1,
   neck0, neck2: model.getObjectByName("Neck2_M_044"),
   scap: ["L", "R"].map((s) => boneBy(`Scapula_${s}_`)),
+  arms: ["L", "R"].map((s) => ({ sh: boneBy(`Shoulder_${s}_`), el: boneBy(`Elbow_${s}_`), wr: boneBy(`Wrist_${s}_`) })),
   wings: ["L", "R"].map((s) => ({ sh: boneBy(`Wing_Shoulder_${s}_`), el: boneBy(`Wing_Elbow_${s}_`), wr: boneBy(`Wing_Wrist_${s}_`) })) };
+const ELBOW_POLE = new THREE.Vector3(0, -1, -Number(params.get("poleBack") || 0.35)).normalize();   // elbows point down and a little back
+const UNROLL = Number(params.get("unroll") || 1);
 const AX_X = new THREE.Vector3(1, 0, 0), AX_Y = new THREE.Vector3(0, 1, 0), AX_Z = new THREE.Vector3(0, 0, 1);
 const _la = new THREE.Vector3(), _lb = new THREE.Vector3(), _lc = new THREE.Vector3(), _lq = new THREE.Quaternion();
 const DEG = Math.PI / 180;
@@ -813,31 +819,79 @@ function rotWorld(bone, axis, ang) {                              // world-space
   bone.quaternion.copy(pw.invert().multiply(_lq).multiply(bw));
   bone.updateMatrixWorld(true);
 }
+// Body pushes UP between its planted claws through the pull (owner: body looked detached from the arms).
+// The hands are pinned where the grip put them, so the arms bend to absorb it (see armIK)
+const RISE = Number(params.get("rise") || 0.1);
+const bodyRise = (t) => RISE * eIO(seg(t, 1.4, 2.3)) * (1 - eIO(seg(t, 2.40, 2.68)));
+const _ik = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+function armIK(arm, target, w) {
+  const [S, E, W, T] = _ik;
+  arm.sh.getWorldPosition(S); arm.el.getWorldPosition(E); arm.wr.getWorldPosition(W);
+  T.copy(W).lerp(target, w);
+  const L1 = E.distanceTo(S), L2 = W.distanceTo(E);
+  const ax = T.clone().sub(S); const d = Math.min(ax.length(), (L1 + L2) * 0.999); ax.normalize();
+  const pole = E.clone().sub(S); pole.addScaledVector(ax, -pole.dot(ax));
+  if (pole.lengthSq() < 1e-10) return;
+  pole.normalize();
+  const x = (L1 * L1 - L2 * L2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, L1 * L1 - x * x));
+  const En = S.clone().addScaledVector(ax, x).addScaledVector(pole, h);
+  turnBone(arm.sh, E.clone().sub(S), En.clone().sub(S), 1);
+  arm.el.getWorldPosition(E); arm.wr.getWorldPosition(W);
+  turnBone(arm.el, W.clone().sub(E), T.clone().sub(E), 1);
+}
 const breath = (t) => eIO(seg(t, 1.35, 1.9)) - 0.3 * eIO(seg(t, 1.9, 2.4));   // fills as the claws settle, stays proud
+const _pin = [new THREE.Vector3(), new THREE.Vector3()];
 function applyLife(t, w) {
   if (w <= 0) return;
+  // claw targets: where the grip pose put the wrists, minus the body rise (the claws stay on the lip)
+  const rise = params.has("nopin") ? 0 : bodyRise(t);
+  LIFE.arms.forEach((arm, i) => { arm.wr.getWorldPosition(_pin[i]); _pin[i].y -= rise; });
   const a = breath(t) * w;
   // 1. torso inhale/drive: chest top tips back, sternum lifts (pitch only)
   rotWorld(LIFE.sp1, AX_X, -0.75 * DEG * a);
   rotWorld(LIFE.sp3, AX_X, -1.5 * DEG * a);
   rotWorld(LIFE.chest, AX_X, -3 * DEG * a);
-  // 3. scapulae: draw back toward the spine, then drop as the arms take the load
-  const load = eIO(seg(t, 1.3, 1.8)) * w, power = eIO(seg(t, 1.8, 2.4)) * w;
+  // 3. scapulae: draw back toward the spine, then rise and bunch as the arms take the load
+  // (shoulders up, head sunk between them: the power posture, and it reads head-on)
+  const load = eIO(seg(t, 1.3, 1.8)) * w, power = eIO(seg(t, 1.5, 2.2)) * w;
   for (const sc of LIFE.scap) {
     const side = Math.sign(sc.children[0].getWorldPosition(_la).x - sc.getWorldPosition(_lb).x) || 1;
     rotWorld(sc, AX_Y, side * 3 * DEG * load);
-    rotWorld(sc, AX_Z, -side * 2.5 * DEG * power);
+    rotWorld(sc, AX_Z, side * 3.5 * DEG * power);
   }
   // 2. wings cocked up/back and folded a touch tighter: anticipation for the Skill02 burst
   const cock = eIO(seg(t, 1.65, 2.36)) * w;
   for (const wg of LIFE.wings) {
     const side = Math.sign(wg.el.getWorldPosition(_la).x - wg.sh.getWorldPosition(_lb).x) || 1;
-    rotWorld(wg.sh, AX_Z, side * 5 * DEG * cock);
+    rotWorld(wg.sh, AX_Z, side * 7 * DEG * cock);
     rotWorld(wg.sh, AX_Y, side * 5 * DEG * cock);
     wg.sh.getWorldPosition(_la); wg.el.getWorldPosition(_lb); wg.wr.getWorldPosition(_lc);
     const u = _lb.clone().sub(_la).normalize(), f = _lc.clone().sub(_lb).normalize();
-    const h = u.cross(f); if (h.lengthSq() > 1e-8) rotWorld(wg.el, h.normalize(), 4 * DEG * cock);
+    const h = u.cross(f); if (h.lengthSq() > 1e-8) rotWorld(wg.el, h.normalize(), 1.5 * DEG * cock);   // barely folds: the silhouette should grow into the burst
   }
+  // 6. elbows swung DOWN (owner: the arms read as rods detached from the body). Head-on, the elbow bend
+  // pointed at/away from the lens, so shoulder→elbow→claw was one straight horizontal line. Rotating the
+  // arm chain about the shoulder→wrist axis keeps the wrist (and so the tear edge) exactly where it is
+  // and swings the elbow below the shoulder line: the reference's wide "W", joints visibly working.
+  const swing = (params.has("noswing") ? 0 : 1) * eIO(seg(t, 1.25, 1.65)) * w;
+  if (swing > 0) for (const arm of LIFE.arms) {
+    arm.sh.getWorldPosition(_la); arm.el.getWorldPosition(_lb); arm.wr.getWorldPosition(_lc);
+    const ax = _lc.clone().sub(_la).normalize();
+    const e = _lb.clone().sub(_la); e.addScaledVector(ax, -e.dot(ax));
+    const d = ELBOW_POLE.clone().addScaledVector(ax, -ELBOW_POLE.dot(ax));
+    if (e.lengthSq() < 1e-8 || d.lengthSq() < 1e-8) continue;
+    e.normalize(); d.normalize();
+    const ang = Math.atan2(e.clone().cross(d).dot(ax), e.dot(d));
+    rotWorld(arm.sh, ax, ang * swing);
+    // the swing also rolled the forearm, turning its elbow spur from pointing back (hidden) to hanging
+    // straight down like a rod; un-roll the forearm about its own axis (elbow and wrist stay put)
+    arm.el.getWorldPosition(_lb); arm.wr.getWorldPosition(_lc);
+    rotWorld(arm.el, _lc.clone().sub(_lb).normalize(), -ang * swing * UNROLL);
+  }
+  // 7. two-bone IK: put each wrist back on its pinned target (shoulder fixed, elbow stays in its current
+  // bend plane), so everything the torso does above (rise, scapulae, chest) shows up as the arm joints
+  // working, not as the claws sliding along the lip
+  LIFE.arms.forEach((arm, i) => armIK(arm, _pin[i], w));
   // 4. neck follows the chest 0.1s late, pitching forward; aimHead keeps the head itself still
   const an = breath(t - 0.1) * w * 3 * DEG;
   rotWorld(LIFE.neck0, AX_X, 0.6 * an);
@@ -885,7 +939,7 @@ function applyTimeline(t, idleClock, wall) {
 
   // Dragon transform (bobs with each wingbeat)
   const d = track(DRAGON, t);
-  rig.position.set(d[0], d[1] + lift * 0.1 + 0.02 * eIO(seg(t, 1.4, 2.3)) * (1 - eIO(seg(t, 2.36, 2.6))) + (t === 0 ? Math.sin(wall * 1.3) * 0.03 : 0), d[2]);
+  rig.position.set(d[0], d[1] + lift * 0.1 + bodyRise(t) + (t === 0 ? Math.sin(wall * 1.3) * 0.03 : 0), d[2]);
   // Body stays upright and square to the rift, in line with the face (owner: no roll)
   rig.rotation.z = 0;
   // Bolt: body turns onto the bolt axis (yaw + pitch)
@@ -898,7 +952,7 @@ function applyTimeline(t, idleClock, wall) {
   // Square the body to the rift from frame 0: measure the spine's heading (the claw strike turns
   // it ~43°) and cancel it, so body and face are one straight line. Released as the rift fully
   // opens so the owner's 2.5s pose is untouched.
-  const wSquare = 1 - eIO(seg(t, 2.3, 2.5));
+  const wSquare = 1 - eIO(seg(t, 2.3, 2.65));   // ≥0.3s release: up to ~43° of yaw unwinds here
   if (wSquare > 0) {
     spine1.getWorldPosition(_s1); neck0.getWorldPosition(_s2);
     rig.rotation.y -= Math.atan2(_s2.x - _s1.x, _s2.z - _s1.z) * wSquare;
@@ -912,7 +966,7 @@ function applyTimeline(t, idleClock, wall) {
   const ca = Math.cos(ang), sa = Math.sin(ang);
   if (kGrip > 0) {
     applyGrip(smoothTrack(GRIP, t)[0], kGrip);                      // one smooth ease-in-out pull
-    if (!params.has("nolife")) applyLife(t, 1 - eIO(seg(t, 2.36, 2.6)));   // breath, wings, scapulae, neck (off as the burst takes over)
+    if (!params.has("nolife")) applyLife(t, 1 - eIO(seg(t, 2.40, 2.68)));   // breath, wings, scapulae, neck (off as the burst takes over)
     WRISTS.forEach((h, i) => {                                       // knuckles along the edge, hand bent back so they ride the lip
       const out = new THREE.Vector3(ca * h.side, -sa * h.side, 0);
       alignHand(h, new THREE.Vector3(out.x * 0.45, out.y * 0.45, 0.9).normalize(), new THREE.Vector3(sa, ca, 0), kGrip);
@@ -925,7 +979,7 @@ function applyTimeline(t, idleClock, wall) {
   headBone.getWorldPosition(_hp); _toCam.set(camNow[0], camNow[1], camNow[2]).sub(_hp).normalize();
   const wAim = 1 - eIO(seg(t, 2.85, 3.2));                      // face straight out from frame 0; hands back to the roar clip
   const strain = 0.5 * eIO(seg(t, 1.4, 1.9)) * (1 - eIO(seg(t, 2.2, 2.6)));   // head lowers slightly, steadily
-  if (wAim > 0) aimHead(_aimDir.copy(FACE_OUT).lerp(_toCam, 0.7).normalize().add(_hp.set(0, -0.18 * strain, 0)).normalize(), WORLD_UP, wAim);
+  if (wAim > 0) aimHead(_aimDir.copy(FACE_OUT).lerp(_toCam, 0.7).normalize().add(_hp.set(0, -0.26 * strain, 0)).normalize(), WORLD_UP, wAim);
   if (wb > 0) aimHead(BOLT_DIR, WORLD_UP, 0.85 * wb);            // head leads along the bolt
   // Tear edges from the fingertips (world → tear space: across = (cos a, −sin a), along = (sin a, cos a))
   let acr0 = 0, acr1 = 0, alg = 0;
@@ -1123,10 +1177,15 @@ function resize() {
 addEventListener("resize", resize);
 addEventListener("orientationchange", resize);
 
+let lastRender = 0;
 function frame(now) {
   if (disposed) return;
   raf = requestAnimationFrame(frame);
   if (document.hidden || (opts.shouldRender && !opts.shouldRender())) return;   // offscreen: skip the GPU work
+  // Not playing (idle crack before the scroll, or the open rift behind the hero afterwards): the scene
+  // barely moves, so render at ~30fps to halve the GPU work and heat; the cinematic itself runs full rate
+  if (!playing && now - lastRender < 1000 / 30 - 2) return;
+  lastRender = now;
   const wall = now / 1000;
   if (playing) { t = toTimeline(playFrom + (now - playStart) / 1000); if (t >= DURATION) { t = DURATION; playing = false; } }
   if (!playing && t >= DURATION && !doneFired) { doneFired = true; doneCbs.forEach((cb) => cb()); }

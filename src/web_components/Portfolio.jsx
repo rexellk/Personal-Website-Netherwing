@@ -3,6 +3,7 @@ import "./portfolio.css";
 
 import ButterflyCanvas from "./ButterflyCanvas";
 import MegaphoneIcon from "./MegaphoneIcon";
+import DragonHeadIcon from "./DragonHeadIcon";
 import PortfolioNav from "./PortfolioNav";
 import Hero from "./Hero";
 import About from "./About";
@@ -27,22 +28,25 @@ function Cursor() {
         cursorRef.current.style.top = e.clientY + "px";
       }
     };
-    window.addEventListener("mousemove", onMove);
-
-    let id;
+    // the trailing ring's loop sleeps once it has caught up with the cursor (no idle per-frame work)
+    let id = 0;
     function loop() {
-      ring.current.x += (mouse.current.x - ring.current.x) * 0.12;
-      ring.current.y += (mouse.current.y - ring.current.y) * 0.12;
+      const dx = mouse.current.x - ring.current.x, dy = mouse.current.y - ring.current.y;
+      ring.current.x += dx * 0.12;
+      ring.current.y += dy * 0.12;
       if (ringRef.current) {
         ringRef.current.style.left = ring.current.x + "px";
         ringRef.current.style.top = ring.current.y + "px";
       }
-      id = requestAnimationFrame(loop);
+      id = Math.abs(dx) + Math.abs(dy) > 0.3 ? requestAnimationFrame(loop) : 0;
     }
-    loop();
+    const wake = () => { if (!id) id = requestAnimationFrame(loop); };
+    window.addEventListener("mousemove", wake);
+    window.addEventListener("mousemove", onMove);
 
     return () => {
       window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mousemove", wake);
       cancelAnimationFrame(id);
     };
   }, []);
@@ -144,17 +148,38 @@ function SoundToggle({ muted, onToggle, calling }) {
   );
 }
 
-function StatusTag({ muted, setMuted }) {
+// Netherwing-head toggle for the dragon animations (state lives in App: window.animEnabled)
+function AnimToggle({ animOn, onToggle }) {
+  return (
+    <button
+      className={`pv-sound pv-anim${animOn ? " on" : ""}`}
+      onClick={onToggle}
+      aria-pressed={animOn}
+      aria-label={animOn ? "Turn dragon animations off" : "Turn dragon animations on"}
+      title={animOn ? "Turn dragon animations off" : "Turn dragon animations on"}
+    >
+      <DragonHeadIcon height={46} />
+      <span className="pv-sound-label">{animOn ? "Anim on" : "Anim off"}</span>
+    </button>
+  );
+}
+
+function StatusTag({ muted, setMuted, animOn, setAnimOn }) {
   const [introPending, setIntroPending] = useState(true);
 
   useEffect(() => {
     const onDone = () => setIntroPending(false);
     window.addEventListener('riftTrigger', onDone, { once: true });
-    return () => window.removeEventListener('riftTrigger', onDone);
+    window.addEventListener('dragonSceneDone', onDone, { once: true });   // intro skipped (anim off)
+    return () => {
+      window.removeEventListener('riftTrigger', onDone);
+      window.removeEventListener('dragonSceneDone', onDone);
+    };
   }, []);
 
   return (
     <div className={`pv-status${introPending ? "" : " intro-done"}`}>
+      <AnimToggle animOn={animOn} onToggle={() => setAnimOn(a => !a)} />
       <div>
         {/* Calls out (pulsing arcs) while muted, until the intro starts */}
         <SoundToggle muted={muted} calling={muted && introPending} onToggle={() => setMuted(m => !m)} />
@@ -163,7 +188,7 @@ function StatusTag({ muted, setMuted }) {
   );
 }
 
-export default function Portfolio({ modelReady, muted, setMuted }) {
+export default function Portfolio({ modelReady, muted, setMuted, animOn, setAnimOn }) {
   const [riftTriggered, setRiftTriggered] = useState(false);
   const aboutRef = useRef(null);
   const contactRef = useRef(null);
@@ -194,6 +219,8 @@ export default function Portfolio({ modelReady, muted, setMuted }) {
     function tryFire() {
       if (dragonFly2Fired.current) return;
       if (!dragonSceneDone.current || !experiencePassed.current) return;
+      if (window.animEnabled === false) return;   // anim off: never starts (one already flying finishes)
+      if (!window.startDragonFly2) return;         // still loading (it loads after the intro); retried on dragonFly2Ready
       dragonFly2Fired.current = true;
       window.startDragonFly2?.();
     }
@@ -208,9 +235,11 @@ export default function Portfolio({ modelReady, muted, setMuted }) {
 
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('dragonSceneDone', tryFire);
+    window.addEventListener('dragonFly2Ready', tryFire);
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('dragonSceneDone', tryFire);
+      window.removeEventListener('dragonFly2Ready', tryFire);
     };
   }, []);
 
@@ -219,7 +248,7 @@ export default function Portfolio({ modelReady, muted, setMuted }) {
     const el = contactRef.current;
     if (!el) return;
     function tryFireDragonFly() {
-      if (dragonFlyFired.current) return;
+      if (dragonFlyFired.current || window.animEnabled === false) return;
       const top = el.getBoundingClientRect().top;
       if (top < window.innerHeight * DRAGONFLY_TRIGGER && window.startDragonRoar) {
         dragonFlyFired.current = true;
@@ -259,14 +288,16 @@ export default function Portfolio({ modelReady, muted, setMuted }) {
       <div className="pv-rift-glow" />
 
       <PortfolioNav />
-      <StatusTag muted={muted} setMuted={setMuted} />
+      <StatusTag muted={muted} setMuted={setMuted} animOn={animOn} setAnimOn={setAnimOn} />
 
       <main>
         {/* Hero is transparent — rift canvas shows through as its background */}
-        <Hero riftTriggered={riftTriggered} modelReady={modelReady} />
+        <Hero riftTriggered={riftTriggered} modelReady={modelReady} animOn={animOn} />
 
-        {/* Opaque cover so portfolio sections scroll over the rift cleanly */}
-        <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15, overflowX: "clip" }}>
+        {/* Opaque cover so portfolio sections scroll over the rift cleanly. The shadow paints a
+            screen of the same void colour below the page end (no layout/scroll change), so a hard
+            flick's overscroll bounce shows more cover instead of the fixed rift sky behind it. */}
+        <div style={{ background: "var(--pv-void)", position: "relative", zIndex: 15, overflowX: "clip", boxShadow: "0 100vh 0 0 var(--pv-void)" }}>
           <BackgroundAccents />
           <TronDecor />
           <div ref={aboutRef}>

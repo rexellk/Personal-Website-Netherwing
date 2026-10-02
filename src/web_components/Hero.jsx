@@ -5,7 +5,7 @@ function fmtMB(bytes) {
   return (bytes / 1048576).toFixed(1) + ' MB'
 }
 
-export default function Hero({ riftTriggered, modelReady }) {
+export default function Hero({ riftTriggered, modelReady, animOn = true }) {
   const [visible, setVisible] = useState(true);
   const [glbProgress, setGlbProgress] = useState(null);
   // Legibility shadow behind the name + lines, only once the dragon intro is done (the open rift sits behind them)
@@ -76,10 +76,14 @@ export default function Hero({ riftTriggered, modelReady }) {
       </div>
 
       <div className="pv-scroll-hint">
-        {modelReady
+        {/* Anim off: nothing to wait for (the rift never opens), so the loading line gives way to the
+            scroll cue; the download carries on quietly, and turning anim back on mid-load brings the
+            MB counter back where it is */}
+        {modelReady || !animOn
           ? <div className="pv-scroll-line" />
-          : <div style={{ fontFamily: "var(--pv-body)", fontSize: 13, color: "var(--pv-text-faint)", whiteSpace: "nowrap", animation: "pv-fadeIn 0.5s ease forwards" }}>
+          : <div style={{ fontFamily: "var(--pv-body)", fontSize: 13, color: "var(--pv-text-faint)", whiteSpace: "nowrap", textAlign: "center", animation: "pv-fadeIn 0.5s ease forwards" }}>
               Loading the dragon{glbProgress ? ` (${fmtMB(glbProgress.loaded)}${glbProgress.total ? ` of ${fmtMB(glbProgress.total)}` : ''})` : ''}
+              <div style={{ fontSize: 11, marginTop: 4, opacity: 0.7 }}>Turn animations off to skip loading</div>
             </div>
         }
       </div>

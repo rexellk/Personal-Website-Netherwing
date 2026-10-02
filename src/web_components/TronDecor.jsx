@@ -52,19 +52,30 @@ export default function TronDecor() {
       return Math.min(1, scrolled / total)
     }
 
+    // The loop only runs while the fill is catching up to the scroll position: it used to
+    // setState (a React re-render) every frame for the whole visit, even with nothing moving
+    let running = false
     function onScroll() {
       targetRef.current = calcProgress()
+      if (!running) { running = true; rafRef.current = requestAnimationFrame(tick) }
     }
 
     function tick() {
       // smooth lerp toward target
-      currentRef.current += (targetRef.current - currentRef.current) * 0.08
+      const d = targetRef.current - currentRef.current
+      if (Math.abs(d) < 0.0005) {
+        currentRef.current = targetRef.current
+        setProgress(currentRef.current)
+        running = false
+        return
+      }
+      currentRef.current += d * 0.08
       setProgress(currentRef.current)
       rafRef.current = requestAnimationFrame(tick)
     }
 
     window.addEventListener("scroll", onScroll, { passive: true })
-    rafRef.current = requestAnimationFrame(tick)
+    onScroll()
     return () => {
       window.removeEventListener("scroll", onScroll)
       cancelAnimationFrame(rafRef.current)
