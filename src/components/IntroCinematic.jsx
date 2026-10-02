@@ -16,7 +16,6 @@ export default function IntroCinematic() {
     let intro = null
     let cancelled = false
     const base = import.meta.env.BASE_URL
-    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
     mountIntro(stageRef.current, {
       assetBase: `${base}intro/`,
@@ -28,9 +27,11 @@ export default function IntroCinematic() {
       if (cancelled) { i.dispose(); return }
       intro = i
       i.onDone(() => window.dispatchEvent(new CustomEvent('dragonSceneDone')))
-      window.startDragonAnimation = reducedMotion
-        ? () => i.setT(i.DURATION)   // reduced motion: jump straight to the final frame
-        : () => i.play()
+      // Always the full cinematic. It used to jump straight to the final frame under
+      // prefers-reduced-motion, but App still ran the ~7s hand-off around it (hero hidden, rift already
+      // open, scroll locked), which read as a glitch on phones with Reduce Motion on. Visitors who
+      // don't want the animation use the corner "Anim off" toggle, which skips the intro cleanly.
+      window.startDragonAnimation = () => i.play()
       window.dispatchEvent(new CustomEvent('dragonReady'))
     }).catch((err) => console.error('intro load error:', err))
 
